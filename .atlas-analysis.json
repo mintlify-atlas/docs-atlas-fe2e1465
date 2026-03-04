@@ -1,0 +1,121 @@
+{
+  "projectType": "saas",
+  "projectName": "Ecomdrop IA Connector",
+  "projectDescription": "A Shopify app that connects stores with Ecomdrop and Dropi platforms, featuring AI-powered configuration and automated product management.",
+  "theme": "almond",
+  "primaryColor": "#aebd57",
+  "lightColor": "#26272c",
+  "darkColor": "#dbdbdd",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "introduction",
+              "features",
+              "architecture"
+            ]
+          },
+          {
+            "group": "Getting Started",
+            "pages": [
+              "getting-started/installation",
+              "getting-started/quickstart",
+              "getting-started/environment-setup",
+              "getting-started/database-setup"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/product-management",
+              "features/order-processing",
+              "features/ai-configuration",
+              "features/theme-management"
+            ]
+          },
+          {
+            "group": "Integrations",
+            "pages": [
+              "integrations/ecomdrop",
+              "integrations/dropi",
+              "integrations/shopify"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/store-settings",
+              "configuration/flow-management",
+              "configuration/webhooks"
+            ]
+          },
+          {
+            "group": "Deployment",
+            "pages": [
+              "deployment/docker",
+              "deployment/production",
+              "deployment/troubleshooting"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "API Overview",
+            "pages": [
+              "api/overview",
+              "api/authentication"
+            ]
+          },
+          {
+            "group": "Endpoints",
+            "pages": [
+              "api/products",
+              "api/orders",
+              "api/integrations",
+              "api/theme",
+              "api/webhooks"
+            ]
+          },
+          {
+            "group": "Database",
+            "pages": [
+              "api/database/schema",
+              "api/database/models"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Product import and sync between Shopify, Ecomdrop, and Dropi",
+    "AI-powered customer support configuration",
+    "Automated order processing and flow management",
+    "Programmatic theme installation and management",
+    "Real-time webhooks for order and checkout events",
+    "MySQL database with Prisma ORM",
+    "Docker-ready containerized deployment",
+    "Modern React UI with Tailwind CSS and shadcn/ui"
+  ],
+  "publicApiSurface": [
+    "POST /api/products/import - Import products from Dropi to Shopify",
+    "GET /api/dropi/products - Fetch available Dropi products",
+    "POST /api/integrations/dropi/save - Save Dropi integration settings",
+    "POST /api/ecomdrop/callback - Handle Ecomdrop webhook callbacks",
+    "POST /api/orders/poll - Poll and process pending orders",
+    "POST /api/theme/install - Install theme from Git repository",
+    "GET /api/theme/download/:id - Download theme assets",
+    "GET /api/shopify/products - List Shopify products",
+    "GET /api/shopify/product/variants - Get product variants",
+    "DELETE /api/products/association/delete - Remove product associations",
+    "POST /webhooks/orders/create - Webhook for new orders",
+    "POST /webhooks/draft_orders/create - Webhook for draft orders"
+  ]
+}
