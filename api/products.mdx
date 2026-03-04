@@ -1,0 +1,533 @@
+---
+title: "Products API"
+description: "API endpoints for managing Dropi and Shopify product synchronization"
+---
+
+The Products API provides endpoints for fetching products from Dropi, importing/linking products to Shopify, and managing product associations.
+
+## Get Dropi Products
+
+Fetches products from the Dropi platform with pagination and filtering support.
+
+<CodeGroup>
+```http GET
+GET /api/dropi/products
+```
+</CodeGroup>
+
+### Query Parameters
+
+<ParamField query="pageSize" type="integer" default="50">
+  Number of products to return per page
+</ParamField>
+
+<ParamField query="startData" type="integer" default="0">
+  Starting index for pagination
+</ParamField>
+
+<ParamField query="keywords" type="string">
+  Search keywords to filter products
+</ParamField>
+
+<ParamField query="hasSearch" type="boolean">
+  Whether search mode is active (automatically true when keywords are provided)
+</ParamField>
+
+<ParamField query="privated_product" type="boolean" default="false">
+  Filter for private products (ignored when searching)
+</ParamField>
+
+<ParamField query="favorite" type="boolean" default="true">
+  Filter for favorite products (default when not searching and privated_product is false)
+</ParamField>
+
+### Response
+
+<ResponseField name="products" type="array">
+  Array of Dropi products
+  
+  <Expandable title="Product Object">
+    <ResponseField name="id" type="string">
+      Dropi product ID
+    </ResponseField>
+    
+    <ResponseField name="name" type="string">
+      Product name
+    </ResponseField>
+    
+    <ResponseField name="title" type="string">
+      Product title
+    </ResponseField>
+    
+    <ResponseField name="description" type="string">
+      Product description HTML
+    </ResponseField>
+    
+    <ResponseField name="gallery" type="array">
+      Product images
+    </ResponseField>
+    
+    <ResponseField name="variations" type="array">
+      Product variants
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="total" type="integer">
+  Total number of products available
+</ResponseField>
+
+<ResponseField name="pageSize" type="integer">
+  Number of products per page
+</ResponseField>
+
+<ResponseField name="startData" type="integer">
+  Current pagination offset
+</ResponseField>
+
+### Example Response
+
+<CodeGroup>
+```json 200 OK
+{
+  "products": [
+    {
+      "id": "12345",
+      "name": "Premium Product",
+      "title": "Premium Product",
+      "description": "<p>Product description</p>",
+      "gallery": [
+        {
+          "urlS3": "https://d39ru7awumhhs2.cloudfront.net/image.jpg",
+          "url": "https://d39ru7awumhhs2.cloudfront.net/image.jpg"
+        }
+      ],
+      "variations": [
+        {
+          "id": "var-1",
+          "sku": "SKU-001",
+          "price": 29.99
+        }
+      ]
+    }
+  ],
+  "total": 150,
+  "pageSize": 50,
+  "startData": 0
+}
+```
+
+```json 400 Bad Request
+{
+  "error": "Dropi no está configurado"
+}
+```
+
+```json 401 Unauthorized
+{
+  "error": "No shop session found"
+}
+```
+</CodeGroup>
+
+<Note>
+  Requires Dropi integration to be configured with a valid API token.
+</Note>
+
+---
+
+## Get Shopify Products
+
+Retrieves products from the authenticated Shopify store.
+
+<CodeGroup>
+```http GET
+GET /api/shopify/products
+```
+</CodeGroup>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  Whether the request was successful
+</ResponseField>
+
+<ResponseField name="products" type="array">
+  Array of Shopify products
+  
+  <Expandable title="Product Object">
+    <ResponseField name="id" type="string">
+      Shopify product ID (GraphQL format: gid://shopify/Product/123)
+    </ResponseField>
+    
+    <ResponseField name="title" type="string">
+      Product title
+    </ResponseField>
+    
+    <ResponseField name="handle" type="string">
+      Product URL handle
+    </ResponseField>
+    
+    <ResponseField name="status" type="string">
+      Product status (ACTIVE, DRAFT, ARCHIVED)
+    </ResponseField>
+    
+    <ResponseField name="featuredImage" type="object">
+      Featured product image
+    </ResponseField>
+    
+    <ResponseField name="variants" type="array">
+      Product variants (up to 10)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example Response
+
+<CodeGroup>
+```json 200 OK
+{
+  "success": true,
+  "products": [
+    {
+      "id": "gid://shopify/Product/7891234567890",
+      "title": "Example Product",
+      "handle": "example-product",
+      "status": "ACTIVE",
+      "featuredImage": {
+        "url": "https://cdn.shopify.com/...",
+        "altText": "Product image"
+      },
+      "variants": [
+        {
+          "id": "gid://shopify/ProductVariant/123",
+          "title": "Default Title",
+          "price": "29.99"
+        }
+      ]
+    }
+  ]
+}
+```
+</CodeGroup>
+
+<Note>
+  Returns up to 250 products. Pagination support coming soon.
+</Note>
+
+---
+
+## Get Product Variants
+
+Retrieves variants for a specific Shopify product.
+
+<CodeGroup>
+```http GET
+GET /api/shopify/product/variants
+```
+</CodeGroup>
+
+### Query Parameters
+
+<ParamField query="productId" type="string" required>
+  Shopify product ID in GraphQL format (e.g., gid://shopify/Product/123)
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  Whether the request was successful
+</ResponseField>
+
+<ResponseField name="product" type="object">
+  Basic product information
+  
+  <Expandable title="Product Info">
+    <ResponseField name="id" type="string">
+      Shopify product ID
+    </ResponseField>
+    
+    <ResponseField name="title" type="string">
+      Product title
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="variants" type="array">
+  Array of product variants (up to 250)
+  
+  <Expandable title="Variant Object">
+    <ResponseField name="id" type="string">
+      Variant ID
+    </ResponseField>
+    
+    <ResponseField name="title" type="string">
+      Variant title
+    </ResponseField>
+    
+    <ResponseField name="price" type="string">
+      Variant price
+    </ResponseField>
+    
+    <ResponseField name="sku" type="string">
+      SKU code
+    </ResponseField>
+    
+    <ResponseField name="barcode" type="string">
+      Barcode
+    </ResponseField>
+    
+    <ResponseField name="inventoryQuantity" type="integer">
+      Current inventory
+    </ResponseField>
+    
+    <ResponseField name="availableForSale" type="boolean">
+      Whether variant is available for sale
+    </ResponseField>
+    
+    <ResponseField name="selectedOptions" type="array">
+      Variant options (color, size, etc.)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example Response
+
+<CodeGroup>
+```json 200 OK
+{
+  "success": true,
+  "product": {
+    "id": "gid://shopify/Product/7891234567890",
+    "title": "Example Product"
+  },
+  "variants": [
+    {
+      "id": "gid://shopify/ProductVariant/123",
+      "title": "Small / Red",
+      "price": "29.99",
+      "sku": "PROD-SM-RED",
+      "barcode": "123456789",
+      "inventoryQuantity": 50,
+      "availableForSale": true,
+      "selectedOptions": [
+        { "name": "Size", "value": "Small" },
+        { "name": "Color", "value": "Red" }
+      ]
+    }
+  ]
+}
+```
+
+```json 400 Bad Request
+{
+  "success": false,
+  "error": "productId es requerido"
+}
+```
+
+```json 404 Not Found
+{
+  "success": false,
+  "error": "Producto no encontrado o sin variantes"
+}
+```
+</CodeGroup>
+
+---
+
+## Import/Link Product
+
+Imports or links a Dropi product to an existing Shopify product.
+
+<CodeGroup>
+```http POST
+POST /api/products/import
+```
+</CodeGroup>
+
+### Request Body (Form Data)
+
+<ParamField body="dropiProductId" type="string" required>
+  Dropi product ID
+</ParamField>
+
+<ParamField body="dropiProductData" type="string" required>
+  JSON string with complete Dropi product data
+</ParamField>
+
+<ParamField body="shopifyProductId" type="string" required>
+  Shopify product ID to link (GraphQL format)
+</ParamField>
+
+<ParamField body="dropiVariations" type="string">
+  JSON array of Dropi product variations
+</ParamField>
+
+<ParamField body="variantAssociations" type="string">
+  JSON array mapping Dropi variants to Shopify variants
+</ParamField>
+
+<ParamField body="saveDropiName" type="boolean" default="false">
+  Update Shopify product title with Dropi name
+</ParamField>
+
+<ParamField body="saveDropiDescription" type="boolean" default="false">
+  Update Shopify product description with Dropi description
+</ParamField>
+
+<ParamField body="useSuggestedBarcode" type="boolean" default="false">
+  Use Dropi suggested barcodes
+</ParamField>
+
+<ParamField body="saveDropiImages" type="boolean" default="false">
+  Import Dropi product images to Shopify (up to 5 images)
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  Whether the import was successful
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Success or error message
+</ResponseField>
+
+<ResponseField name="association" type="object">
+  Created product association record
+  
+  <Expandable title="Association Object">
+    <ResponseField name="id" type="string">
+      Association record ID
+    </ResponseField>
+    
+    <ResponseField name="shop" type="string">
+      Shop domain
+    </ResponseField>
+    
+    <ResponseField name="dropiProductId" type="string">
+      Dropi product ID
+    </ResponseField>
+    
+    <ResponseField name="shopifyProductId" type="string">
+      Shopify product ID
+    </ResponseField>
+    
+    <ResponseField name="dropiProductName" type="string">
+      Dropi product name
+    </ResponseField>
+    
+    <ResponseField name="shopifyProductTitle" type="string">
+      Shopify product title
+    </ResponseField>
+    
+    <ResponseField name="importType" type="string">
+      Import type (always "link")
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example Response
+
+<CodeGroup>
+```json 200 OK
+{
+  "success": true,
+  "association": {
+    "id": "clx123abc456",
+    "shop": "mystore.myshopify.com",
+    "dropiProductId": "12345",
+    "shopifyProductId": "gid://shopify/Product/7891234567890",
+    "dropiProductName": "Premium Product",
+    "shopifyProductTitle": "Premium Product",
+    "importType": "link",
+    "saveDropiName": true,
+    "saveDropiDescription": true,
+    "useSuggestedBarcode": false,
+    "saveDropiImages": true
+  },
+  "message": "Producto sincronizado exitosamente"
+}
+```
+
+```json 400 Bad Request
+{
+  "error": "Datos del producto Dropi y Shopify requeridos"
+}
+```
+</CodeGroup>
+
+<Warning>
+  This endpoint only supports linking to existing Shopify products. Creating new products is not supported.
+</Warning>
+
+<Note>
+  When `saveDropiImages` is enabled, up to 5 images from the Dropi product gallery will be appended to the Shopify product.
+</Note>
+
+---
+
+## Delete Product Association
+
+Removes the association between a Dropi product and a Shopify product.
+
+<CodeGroup>
+```http POST
+POST /api/products/association/delete
+```
+</CodeGroup>
+
+### Request Body (Form Data)
+
+<ParamField body="associationId" type="string" required>
+  ID of the association to delete
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  Whether the deletion was successful
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Success message
+</ResponseField>
+
+<ResponseField name="associationId" type="string">
+  ID of the deleted association
+</ResponseField>
+
+### Example Response
+
+<CodeGroup>
+```json 200 OK
+{
+  "success": true,
+  "message": "Asociación eliminada exitosamente",
+  "associationId": "clx123abc456"
+}
+```
+
+```json 400 Bad Request
+{
+  "error": "ID de asociación requerido"
+}
+```
+
+```json 403 Forbidden
+{
+  "error": "No autorizado"
+}
+```
+
+```json 404 Not Found
+{
+  "error": "Asociación no encontrada"
+}
+```
+</CodeGroup>
+
+<Note>
+  This only removes the association record. The Shopify product remains unchanged.
+</Note>

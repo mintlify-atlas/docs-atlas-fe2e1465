@@ -1,0 +1,378 @@
+---
+title: 'AI Configuration'
+description: 'Configure your AI assistant with company information, FAQs, policies, rules, and notifications'
+---
+
+## Overview
+
+The AI Configuration feature allows you to customize the Ecomdrop AI assistant to provide personalized customer support. Configure your company details, payment methods, policies, frequently asked questions, behavioral rules, and automated notifications.
+
+## Accessing AI Configuration
+
+Navigate to **Configuration** → **AI Assistant** in your Ecomdrop IA Connector dashboard to access the AI configuration interface.
+
+## Basic Information
+
+<Steps>
+  <Step title="Agent Name">
+    Set a friendly name for your AI assistant (e.g., "Andrés", "Sofia").
+    
+    This name will be used when the assistant interacts with customers, creating a more personalized experience.
+  </Step>
+  
+  <Step title="Company Name">
+    Enter your business name (e.g., "ClickShop®").
+    
+    The AI will reference this when discussing your company with customers.
+  </Step>
+  
+  <Step title="Company Description">
+    Provide a detailed description of your business:
+    - What products or services you offer
+    - Your unique value proposition
+    - Target audience and market
+    - Business history or mission
+    
+    <Note>
+      A comprehensive description helps the AI understand your business context and provide more relevant responses.
+    </Note>
+  </Step>
+</Steps>
+
+## Payment Methods
+
+### Adding Payment Methods
+
+Configure the payment options available to your customers:
+
+<Steps>
+  <Step title="Click 'Agregar' (Add)">
+    Add a new payment method to the list.
+  </Step>
+  
+  <Step title="Enter Method Name">
+    Specify the payment method (e.g., "Credit Card", "PayPal", "Cash on Delivery", "Bank Transfer").
+  </Step>
+  
+  <Step title="Set Status">
+    Toggle the "Activo" (Active) checkbox to enable or disable the payment method.
+    
+    <Warning>
+      Only active payment methods will be mentioned by the AI assistant.
+    </Warning>
+  </Step>
+  
+  <Step title="Repeat for All Methods">
+    Add all payment methods you accept.
+  </Step>
+</Steps>
+
+### Managing Payment Methods
+
+- **Edit**: Click on the method name to update it
+- **Enable/Disable**: Use the checkbox to activate or deactivate
+- **Remove**: Click the trash icon (🗑️) to delete a payment method
+
+## Company Policies
+
+Define your business policies in the dedicated text area:
+
+<Tabs>
+  <Tab title="Shipping Policies">
+    - Delivery timeframes
+    - Shipping costs and zones
+    - Tracking information
+    - International shipping policies
+  </Tab>
+  
+  <Tab title="Return Policies">
+    - Return window (e.g., 30 days)
+    - Conditions for returns
+    - Refund process and timeline
+    - Items that cannot be returned
+  </Tab>
+  
+  <Tab title="Privacy & Data">
+    - How customer data is used
+    - Privacy protection measures
+    - Cookie policies
+    - Contact information for privacy concerns
+  </Tab>
+  
+  <Tab title="Terms of Service">
+    - Purchasing conditions
+    - User responsibilities
+    - Limitation of liability
+    - Dispute resolution
+  </Tab>
+</Tabs>
+
+<Note>
+  The AI will reference these policies when customers ask about returns, shipping, privacy, or terms of service.
+</Note>
+
+## Frequently Asked Questions (FAQs)
+
+### Pre-Sale FAQs
+
+Configure questions customers typically ask **before** making a purchase:
+
+<Steps>
+  <Step title="Add FAQ">
+    Click "Agregar" (Add) under the "Preguntas Frecuentes" section.
+  </Step>
+  
+  <Step title="Enter Question">
+    Type the common question customers ask (e.g., "What sizes do you have?", "Do you ship internationally?").
+  </Step>
+  
+  <Step title="Provide Answer">
+    Enter a clear, concise answer the AI should provide.
+  </Step>
+  
+  <Step title="Add More">
+    Repeat for all common pre-sale questions.
+  </Step>
+</Steps>
+
+**Example Pre-Sale FAQs:**
+
+<AccordionGroup>
+  <Accordion title="Product-Related">
+    - What materials are your products made from?
+    - Do you offer customization?
+    - What sizes are available?
+    - Are products in stock?
+  </Accordion>
+  
+  <Accordion title="Ordering">
+    - How do I place an order?
+    - Can I modify my order after placing it?
+    - Do you offer gift wrapping?
+    - What payment methods do you accept?
+  </Accordion>
+  
+  <Accordion title="Shipping">
+    - How long does shipping take?
+    - Do you ship to my country?
+    - What are the shipping costs?
+    - Can I track my order?
+  </Accordion>
+</AccordionGroup>
+
+### Post-Sale FAQs
+
+Configure questions customers ask **after** completing their purchase:
+
+<Steps>
+  <Step title="Add Post-Sale FAQ">
+    Click "Agregar" (Add) under the "Preguntas Frecuentes Post Venta" section.
+  </Step>
+  
+  <Step title="Enter Question">
+    Type the common post-purchase question (e.g., "Where is my order?", "How do I return an item?").
+  </Step>
+  
+  <Step title="Provide Answer">
+    Enter a helpful answer with specific instructions.
+  </Step>
+</Steps>
+
+**Example Post-Sale FAQs:**
+
+<AccordionGroup>
+  <Accordion title="Order Tracking">
+    - Where is my order?
+    - How do I track my shipment?
+    - When will my order arrive?
+    - My tracking hasn't updated, what should I do?
+  </Accordion>
+  
+  <Accordion title="Returns & Refunds">
+    - How do I return an item?
+    - When will I receive my refund?
+    - What is your return policy?
+    - Can I exchange an item instead?
+  </Accordion>
+  
+  <Accordion title="Issues">
+    - I received a damaged item, what should I do?
+    - An item is missing from my order
+    - The product doesn't match the description
+    - How do I contact customer support?
+  </Accordion>
+</AccordionGroup>
+
+## Rules and Guidelines
+
+Define behavioral rules that guide how the AI assistant interacts with customers:
+
+<Steps>
+  <Step title="Add Rule">
+    Click "Agregar" (Add) under the "Reglas" section.
+  </Step>
+  
+  <Step title="Define Rule">
+    Enter a specific guideline for the AI to follow.
+  </Step>
+  
+  <Step title="Add Multiple Rules">
+    Create comprehensive rules for different scenarios.
+  </Step>
+</Steps>
+
+### Example Rules
+
+<Tabs>
+  <Tab title="Tone & Language">
+    - "Always use a friendly and professional tone"
+    - "Address customers formally unless they initiate informal conversation"
+    - "Respond in the customer's language (Spanish or English)"
+    - "Use clear, simple language avoiding jargon"
+  </Tab>
+  
+  <Tab title="Behavior">
+    - "Always confirm understanding before providing solutions"
+    - "Offer alternatives when a product is unavailable"
+    - "Escalate to human support for complex issues"
+    - "Never make promises about delivery dates"
+  </Tab>
+  
+  <Tab title="Compliance">
+    - "Do not share customer data with third parties"
+    - "Follow GDPR/privacy regulations"
+    - "Obtain consent before processing returns"
+    - "Never ask for payment information via chat"
+  </Tab>
+  
+  <Tab title="Sales">
+    - "Recommend related products when appropriate"
+    - "Inform about current promotions and discounts"
+    - "Suggest higher-value alternatives tactfully"
+    - "Always prioritize customer satisfaction over sales"
+  </Tab>
+</Tabs>
+
+## Notifications
+
+Configure automated notifications the AI can send to customers:
+
+<Steps>
+  <Step title="Add Notification">
+    Click "Agregar" (Add) under the "Notificaciones" section.
+  </Step>
+  
+  <Step title="Write Notification Text">
+    Enter the notification message template.
+    
+    <Note>
+      Notifications can include dynamic variables that are filled in automatically (e.g., order number, customer name).
+    </Note>
+  </Step>
+</Steps>
+
+### Notification Types
+
+<Tabs>
+  <Tab title="Order Confirmations">
+    "Thank you for your order! Your order #{order_number} has been confirmed and will be processed shortly."
+  </Tab>
+  
+  <Tab title="Shipping Updates">
+    "Great news! Your order #{order_number} has shipped. Track it here: {tracking_link}"
+  </Tab>
+  
+  <Tab title="Delivery Confirmations">
+    "Your order #{order_number} has been delivered. We hope you love it! Please contact us if you have any concerns."
+  </Tab>
+  
+  <Tab title="Abandoned Carts">
+    "You left items in your cart! Complete your purchase now and get free shipping on orders over $50."
+  </Tab>
+  
+  <Tab title="Promotions">
+    "Special offer just for you! Get 20% off your next purchase with code THANKYOU20."
+  </Tab>
+</Tabs>
+
+## Saving Configuration
+
+After configuring all sections:
+
+1. Review your settings for accuracy
+2. Click the **Guardar** (Save) button at the bottom of the page
+3. Wait for confirmation that settings were saved
+
+<Warning>
+  All changes are saved together. Ensure all sections are complete before saving.
+</Warning>
+
+## Data Storage
+
+AI configuration is stored in the `AIConfiguration` database table with the following fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `agentName` | Text | AI assistant name |
+| `companyName` | Text | Your business name |
+| `companyDescription` | Text | Business description |
+| `paymentMethods` | JSON | Array of payment method objects |
+| `companyPolicies` | Text | Company policies text |
+| `faq` | JSON | Array of pre-sale FAQ objects |
+| `postSaleFaq` | JSON | Array of post-sale FAQ objects |
+| `rules` | JSON | Array of rule objects |
+| `notifications` | JSON | Array of notification objects |
+
+Each shop has one AI configuration record, automatically created when first accessed.
+
+## Best Practices
+
+<Card title="Be Comprehensive" icon="book">
+  Provide detailed FAQs covering common customer questions to reduce support tickets.
+</Card>
+
+<Card title="Stay Updated" icon="refresh-cw">
+  Regularly review and update policies, FAQs, and rules to reflect changes in your business.
+</Card>
+
+<Card title="Use Clear Language" icon="message-circle">
+  Write in simple, customer-friendly language that the AI can easily reference.
+</Card>
+
+<Card title="Test Responses" icon="check-circle">
+  Test the AI with common questions to ensure it provides accurate, helpful responses.
+</Card>
+
+<Card title="Monitor Performance" icon="bar-chart">
+  Track which FAQs are referenced most often and adjust based on customer needs.
+</Card>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Configuration not saving">
+    - Check that all required fields are filled
+    - Ensure payment methods have names before saving
+    - Verify FAQ questions and answers are complete
+    - Try refreshing the page and re-entering data
+  </Accordion>
+  
+  <Accordion title="AI not using configured information">
+    - Verify configuration was saved successfully
+    - Check that the AI assistant is enabled for your shop
+    - Ensure there are no conflicting rules
+    - Contact Ecomdrop support for AI integration issues
+  </Accordion>
+  
+  <Accordion title="Cannot add new items (FAQs, rules, etc.)">
+    - Check browser console for JavaScript errors
+    - Try using a different browser
+    - Clear browser cache and cookies
+    - Ensure you have a stable internet connection
+  </Accordion>
+</AccordionGroup>
+
+## Related Features
+
+- [Configuration](/configuration/store-settings) - Main app configuration settings
+- [Order Processing](/features/order-processing) - How AI can assist with order inquiries

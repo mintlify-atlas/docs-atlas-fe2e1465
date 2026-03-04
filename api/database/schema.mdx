@@ -1,0 +1,396 @@
+---
+title: 'Database Schema'
+description: 'Complete database schema overview for the Ecomdrop IA Connector'
+---
+
+## Overview
+
+The Ecomdrop IA Connector uses **MySQL 8.0** as its database engine, hosted on a VPS. The schema is managed through Prisma ORM, providing type-safe database access and automatic migrations.
+
+<Info>
+  Database connection is configured via the `DATABASE_URL` environment variable pointing to MySQL 8.0 on VPS (31.97.135.241:3306).
+</Info>
+
+## Entity Relationship Diagram
+
+```mermaid
+erDiagram
+    Session {
+        string id PK
+        string shop
+        string state
+        boolean isOnline
+        text scope
+        datetime expires
+        text accessToken
+        bigint userId
+        string firstName
+        string lastName
+        string email
+        boolean accountOwner
+        string locale
+        boolean collaborator
+        boolean emailVerified
+    }
+    
+    ShopConfiguration {
+        string id PK
+        string shop UK
+        text ecomdropApiKey
+        string nuevoPedidoFlowId
+        string carritoAbandonadoFlowId
+        string dropiStoreName
+        string dropiCountry
+        text dropiToken
+        datetime createdAt
+        datetime updatedAt
+    }
+    
+    ProductAssociation {
+        string id PK
+        string shop
+        string dropiProductId
+        string shopifyProductId
+        string dropiProductName
+        string shopifyProductTitle
+        string importType
+        text dropiVariations
+        boolean saveDropiName
+        boolean saveDropiDescription
+        string customPrice
+        boolean useSuggestedBarcode
+        boolean saveDropiImages
+        datetime createdAt
+        datetime updatedAt
+    }
+    
+    AIConfiguration {
+        string id PK
+        string shop UK
+        string agentName
+        string companyName
+        text companyDescription
+        text paymentMethods
+        text companyPolicies
+        text faq
+        text postSaleFaq
+        text rules
+        text notifications
+        datetime createdAt
+        datetime updatedAt
+    }
+    
+    Session ||--o{ ShopConfiguration : "shop"
+    Session ||--o{ ProductAssociation : "shop"
+    Session ||--o{ AIConfiguration : "shop"
+```
+
+## Database Tables
+
+### Session
+
+Stores Shopify OAuth session data for authenticated store connections.
+
+<ParamField path="id" type="string" required>
+  Primary key - Unique session identifier
+</ParamField>
+
+<ParamField path="shop" type="string" required>
+  Shop domain (max 255 chars) - Indexed for fast lookups
+</ParamField>
+
+<ParamField path="state" type="string" required>
+  OAuth state parameter (max 255 chars)
+</ParamField>
+
+<ParamField path="isOnline" type="boolean" default="false">
+  Whether this is an online (user) or offline (app) session
+</ParamField>
+
+<ParamField path="scope" type="text">
+  OAuth scopes granted to the app
+</ParamField>
+
+<ParamField path="expires" type="datetime">
+  Session expiration timestamp (for online sessions)
+</ParamField>
+
+<ParamField path="accessToken" type="text" required>
+  Shopify access token for API calls
+</ParamField>
+
+<ParamField path="userId" type="bigint">
+  Shopify user ID (for online sessions)
+</ParamField>
+
+<ParamField path="firstName" type="string">
+  User's first name (max 255 chars)
+</ParamField>
+
+<ParamField path="lastName" type="string">
+  User's last name (max 255 chars)
+</ParamField>
+
+<ParamField path="email" type="string">
+  User's email address (max 255 chars)
+</ParamField>
+
+<ParamField path="accountOwner" type="boolean" default="false">
+  Whether the user is the shop owner
+</ParamField>
+
+<ParamField path="locale" type="string">
+  User's locale preference (max 10 chars)
+</ParamField>
+
+<ParamField path="collaborator" type="boolean">
+  Whether the user is a collaborator
+</ParamField>
+
+<ParamField path="emailVerified" type="boolean">
+  Whether the user's email is verified
+</ParamField>
+
+**Indexes:**
+- `Session_shop_idx` on `shop` - For efficient shop-based queries
+
+---
+
+### ShopConfiguration
+
+Stores platform configuration and API credentials for each connected shop.
+
+<ParamField path="id" type="string" required>
+  Primary key - UUID generated automatically
+</ParamField>
+
+<ParamField path="shop" type="string" required>
+  Shop domain (max 255 chars) - Unique constraint
+</ParamField>
+
+<ParamField path="ecomdropApiKey" type="text">
+  Ecomdrop API key for flow automation
+</ParamField>
+
+<ParamField path="nuevoPedidoFlowId" type="string">
+  Ecomdrop flow ID for new orders (max 255 chars)
+</ParamField>
+
+<ParamField path="carritoAbandonadoFlowId" type="string">
+  Ecomdrop flow ID for abandoned carts (max 255 chars)
+</ParamField>
+
+<ParamField path="dropiStoreName" type="string">
+  Dropi store identifier (max 255 chars)
+</ParamField>
+
+<ParamField path="dropiCountry" type="string">
+  Dropi country code (max 10 chars)
+</ParamField>
+
+<ParamField path="dropiToken" type="text">
+  Dropi authentication token
+</ParamField>
+
+<ParamField path="createdAt" type="datetime" default="now()">
+  Record creation timestamp
+</ParamField>
+
+<ParamField path="updatedAt" type="datetime">
+  Record last update timestamp (auto-updated)
+</ParamField>
+
+**Indexes:**
+- `ShopConfiguration_shop_key` on `shop` - Unique constraint
+- `ShopConfiguration_shop_idx` on `shop` - For efficient lookups
+
+---
+
+### ProductAssociation
+
+Tracks product mappings between Dropi and Shopify catalogs.
+
+<ParamField path="id" type="string" required>
+  Primary key - UUID generated automatically
+</ParamField>
+
+<ParamField path="shop" type="string" required>
+  Shop domain (max 255 chars)
+</ParamField>
+
+<ParamField path="dropiProductId" type="string" required>
+  Dropi product identifier (max 255 chars)
+</ParamField>
+
+<ParamField path="shopifyProductId" type="string" required>
+  Shopify product ID (max 255 chars)
+</ParamField>
+
+<ParamField path="dropiProductName" type="string">
+  Product name from Dropi (max 500 chars)
+</ParamField>
+
+<ParamField path="shopifyProductTitle" type="string">
+  Product title in Shopify (max 500 chars)
+</ParamField>
+
+<ParamField path="importType" type="string" required>
+  Type of import performed (max 50 chars)
+</ParamField>
+
+<ParamField path="dropiVariations" type="text">
+  JSON data storing variant mappings
+</ParamField>
+
+<ParamField path="saveDropiName" type="boolean" default="true">
+  Whether to save Dropi product name to Shopify
+</ParamField>
+
+<ParamField path="saveDropiDescription" type="boolean" default="true">
+  Whether to save Dropi description to Shopify
+</ParamField>
+
+<ParamField path="customPrice" type="string">
+  Custom pricing rule or value (max 50 chars)
+</ParamField>
+
+<ParamField path="useSuggestedBarcode" type="boolean" default="false">
+  Whether to use Dropi's suggested barcode
+</ParamField>
+
+<ParamField path="saveDropiImages" type="boolean" default="true">
+  Whether to import product images from Dropi
+</ParamField>
+
+<ParamField path="createdAt" type="datetime" default="now()">
+  Record creation timestamp
+</ParamField>
+
+<ParamField path="updatedAt" type="datetime">
+  Record last update timestamp (auto-updated)
+</ParamField>
+
+**Indexes:**
+- `ProductAssociation_shop_dropiProductId_shopifyProductId_key` - Composite unique constraint
+- `ProductAssociation_shop_idx` on `shop`
+- `ProductAssociation_dropiProductId_idx` on `dropiProductId`
+- `ProductAssociation_shopifyProductId_idx` on `shopifyProductId`
+
+<Note>
+  The composite unique constraint ensures each Dropi product can only be associated with a specific Shopify product once per shop.
+</Note>
+
+---
+
+### AIConfiguration
+
+Stores AI agent configuration and knowledge base for each shop.
+
+<ParamField path="id" type="string" required>
+  Primary key - UUID generated automatically
+</ParamField>
+
+<ParamField path="shop" type="string" required>
+  Shop domain (max 255 chars) - Unique constraint
+</ParamField>
+
+<ParamField path="agentName" type="string">
+  Custom name for the AI agent (max 255 chars)
+</ParamField>
+
+<ParamField path="companyName" type="string">
+  Store/company name (max 255 chars)
+</ParamField>
+
+<ParamField path="companyDescription" type="text">
+  Business description for AI context
+</ParamField>
+
+<ParamField path="paymentMethods" type="text">
+  Accepted payment methods information
+</ParamField>
+
+<ParamField path="companyPolicies" type="text">
+  Store policies (returns, shipping, etc.)
+</ParamField>
+
+<ParamField path="faq" type="text">
+  Frequently asked questions for pre-sale
+</ParamField>
+
+<ParamField path="postSaleFaq" type="text">
+  Post-sale support questions and answers
+</ParamField>
+
+<ParamField path="rules" type="text">
+  Custom rules and guidelines for AI behavior
+</ParamField>
+
+<ParamField path="notifications" type="text">
+  Notification preferences and settings
+</ParamField>
+
+<ParamField path="createdAt" type="datetime" default="now()">
+  Record creation timestamp
+</ParamField>
+
+<ParamField path="updatedAt" type="datetime">
+  Record last update timestamp (auto-updated)
+</ParamField>
+
+**Indexes:**
+- `AIConfiguration_shop_key` on `shop` - Unique constraint
+- `AIConfiguration_shop_idx` on `shop` - For efficient lookups
+
+## Database Configuration
+
+<CodeGroup>
+```prisma Prisma Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+```
+
+```env Environment Variables
+DATABASE_URL="mysql://user:password@31.97.135.241:3306/database_name"
+```
+</CodeGroup>
+
+## Character Sets and Collation
+
+All tables use:
+- **Character Set:** `utf8mb4`
+- **Collation:** `utf8mb4_unicode_ci`
+
+This ensures full Unicode support including emojis and international characters.
+
+## Migration History
+
+<Accordion title="20250105000000_init_mysql - Initial Schema">
+  Initial database schema creation including all four core tables:
+  - Session table with OAuth data
+  - ShopConfiguration for platform settings
+  - ProductAssociation for product mappings
+  - AIConfiguration for AI agent setup
+  
+  All indexes and constraints were created in this migration.
+</Accordion>
+
+## Best Practices
+
+<Note>
+  **Always use Prisma Client** for database operations to ensure type safety and proper connection pooling.
+</Note>
+
+<Info>
+  **Indexing Strategy:** The schema includes indexes on frequently queried fields (shop domain) and foreign key relationships for optimal query performance.
+</Info>
+
+## Related Documentation
+
+- [Prisma Models](/api/database/models) - Detailed model documentation

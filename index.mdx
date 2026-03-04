@@ -1,97 +1,253 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Ecomdrop IA Connector"
+description: "Connect your Shopify store with Ecomdrop and Dropi platforms for seamless product management and AI-powered customer support"
+mode: "custom"
 ---
 
-## Setting up
+<div className="relative overflow-hidden bg-gradient-to-br from-[#4a7a2f] via-[#5a8a3f] to-[#3a6a1f] dark:from-[#1a1d27] dark:via-[#242838] dark:to-[#0f1117] py-20 lg:py-24">
+  <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djItMnptMC0ydi0yIDJ6bTAtMnYtMiAyem0wLTJ2LTIgMnptMC0ydi0yIDJ6bTAtMnYtMiAyem0wLTJ2LTIgMnptMC0ydi0yIDJ6bTAtMnYtMiAyem0wLTJ2LTIgMnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-20" />
+  
+  <div className="relative max-w-6xl mx-auto px-6 lg:px-8">
+    <div className="grid lg:grid-cols-12 gap-12 items-center">
+      <div className="lg:col-span-7 space-y-6">
+        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white dark:text-gray-100 leading-tight">
+          Connect Shopify with Ecomdrop & Dropi
+        </h1>
+        <p className="text-lg sm:text-xl text-white/90 dark:text-gray-300 max-w-2xl">
+          Automate product imports, streamline order processing, and deploy AI-powered customer support across your e-commerce platform.
+        </p>
+        <div className="flex flex-wrap gap-4 pt-2">
+          <a 
+            href="/getting-started/quickstart" 
+            className="inline-flex items-center px-6 py-3 rounded-lg bg-[#aebd57] hover:bg-[#9dad47] text-gray-900 font-semibold transition-colors shadow-lg hover:shadow-xl"
+          >
+            Get Started
+            <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
+          </a>
+          <a 
+            href="/api/overview" 
+            className="inline-flex items-center px-6 py-3 rounded-lg border-2 border-white/30 bg-white/10 hover:bg-white/20 text-white font-semibold transition-colors backdrop-blur-sm"
+          >
+            View API Reference
+          </a>
+        </div>
+      </div>
+      <div className="lg:col-span-5 hidden lg:block">
+        <div className="relative">
+          <div className="absolute inset-0 bg-[#aebd57] rounded-2xl blur-3xl opacity-20" />
+          <div className="relative bg-white/10 dark:bg-gray-900/30 backdrop-blur-sm border border-white/20 dark:border-gray-700 rounded-2xl p-8 shadow-2xl">
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-[#aebd57] flex items-center justify-center">
+                  <svg className="w-6 h-6 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="text-sm text-white/70 dark:text-gray-400">Quick Integration</div>
+                  <div className="text-lg font-semibold text-white dark:text-gray-100">5 minutes setup</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-[#aebd57] flex items-center justify-center">
+                  <svg className="w-6 h-6 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="text-sm text-white/70 dark:text-gray-400">Automation</div>
+                  <div className="text-lg font-semibold text-white dark:text-gray-100">Real-time sync</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-[#aebd57] flex items-center justify-center">
+                  <svg className="w-6 h-6 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="text-sm text-white/70 dark:text-gray-400">AI Assistant</div>
+                  <div className="text-lg font-semibold text-white dark:text-gray-100">Smart support</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-Get your documentation site up and running in minutes.
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-3">
+    Quick Start
+  </h2>
+  <p className="text-base text-gray-600 dark:text-gray-400 mb-8">
+    Get your Shopify store connected in minutes with these simple steps.
+  </p>
+  
+  <Steps>
+    <Step title="Install the Shopify App">
+      Install the Ecomdrop IA Connector from the Shopify App Store or deploy your own instance using Docker.
+      
+      ```bash
+      # Clone and install locally
+      git clone https://github.com/Mercaline2024/Ecomdrop-ia-connector-2.git
+      cd ecomdrop-ia-connector-2
+      npm install
+      ```
+    </Step>
+    
+    <Step title="Configure Your API Keys">
+      Set up your environment variables with your Shopify, Ecomdrop, and Dropi credentials.
+      
+      ```env
+      # Shopify Configuration
+      SHOPIFY_API_KEY=your_shopify_api_key
+      SHOPIFY_API_SECRET=your_shopify_secret
+      
+      # Ecomdrop Integration
+      ECOMDROP_API_KEY=your_ecomdrop_key
+      
+      # Dropi Integration
+      DROPI_STORE_NAME=your_store_name
+      DROPI_TOKEN=your_dropi_token
+      ```
+      
+      <Note>
+        Find detailed configuration instructions in the [Environment Setup](/getting-started/environment-setup) guide.
+      </Note>
+    </Step>
+    
+    <Step title="Connect Your Integrations">
+      Navigate to the configuration page in your Shopify admin and connect your Ecomdrop and Dropi accounts. The app will validate your credentials and sync your flow configurations automatically.
+    </Step>
+    
+    <Step title="Import Your First Product">
+      Browse products from Dropi, select the items you want to sell, and import them to your Shopify store with customizable pricing and variants.
+      
+      <Tip>
+        You can customize product names, descriptions, images, and pricing during the import process.
+      </Tip>
+    </Step>
+  </Steps>
+</div>
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
-  </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
-  </Card>
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-3">
+    Core Capabilities
+  </h2>
+  <p className="text-base text-gray-600 dark:text-gray-400 mb-8">
+    Everything you need to run a connected e-commerce operation.
+  </p>
+  
+  <CardGroup cols={3}>
     <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
-  </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
-  </Card>
-</Columns>
+      title="Product Management"
+      icon="box"
+      href="/features/product-management"
+    >
+      Import and sync products between Shopify, Ecomdrop, and Dropi with custom pricing and variants.
+    </Card>
+    <Card
+      title="Order Processing"
+      icon="cart-shopping"
+      href="/features/order-processing"
+    >
+      Automate order workflows with Ecomdrop flow triggers and real-time webhook processing.
+    </Card>
+    <Card
+      title="AI Configuration"
+      icon="brain"
+      href="/features/ai-configuration"
+    >
+      Configure intelligent customer support with company policies, FAQs, and custom rules.
+    </Card>
+    <Card
+      title="Theme Management"
+      icon="palette"
+      href="/features/theme-management"
+    >
+      Install and manage Shopify themes programmatically from Git repositories.
+    </Card>
+    <Card
+      title="Webhooks"
+      icon="webhook"
+      href="/configuration/webhooks"
+    >
+      Real-time event handling for orders, checkouts, and app lifecycle events.
+    </Card>
+    <Card
+      title="Database"
+      icon="database"
+      href="/api/database/schema"
+    >
+      Production-ready MySQL database with Prisma ORM for session and configuration management.
+    </Card>
+  </CardGroup>
+</div>
 
-## Create beautiful pages
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-3">
+    Platform Integrations
+  </h2>
+  <p className="text-base text-gray-600 dark:text-gray-400 mb-8">
+    Connect seamlessly with your e-commerce ecosystem.
+  </p>
+  
+  <CardGroup cols={3}>
+    <Card
+      title="Ecomdrop"
+      icon="robot"
+      href="/integrations/ecomdrop"
+    >
+      Integrate AI-powered workflows and customer support automation from Ecomdrop.
+    </Card>
+    <Card
+      title="Dropi"
+      icon="truck"
+      href="/integrations/dropi"
+    >
+      Import dropshipping products from Dropi with support for multiple Latin American countries.
+    </Card>
+    <Card
+      title="Shopify"
+      icon="shopify"
+      href="/integrations/shopify"
+    >
+      Full Shopify Admin API integration for products, orders, themes, and customer management.
+    </Card>
+  </CardGroup>
+</div>
 
-Everything you need to create world-class documentation.
-
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
-
-## Need inspiration?
-
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-[#1a1d27] dark:to-[#242838] border border-gray-200 dark:border-[#27272a] rounded-2xl p-8 lg:p-12">
+    <div className="max-w-3xl mx-auto text-center space-y-6">
+      <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">
+        Ready to connect your store?
+      </h2>
+      <p className="text-lg text-gray-600 dark:text-gray-400">
+        Join merchants who are automating their product management and customer support with Ecomdrop IA Connector.
+      </p>
+      <div className="flex flex-wrap justify-center gap-4 pt-4">
+        <a 
+          href="/getting-started/installation" 
+          className="inline-flex items-center px-6 py-3 rounded-lg bg-[#aebd57] hover:bg-[#9dad47] text-gray-900 font-semibold transition-colors shadow-md hover:shadow-lg"
+        >
+          Start Installation
+          <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+          </svg>
+        </a>
+        <a 
+          href="/api/overview" 
+          className="inline-flex items-center px-6 py-3 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 font-semibold transition-colors"
+        >
+          Explore API
+        </a>
+      </div>
+    </div>
+  </div>
+</div>

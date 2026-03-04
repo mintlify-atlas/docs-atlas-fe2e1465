@@ -1,0 +1,688 @@
+---
+title: 'Database Setup'
+description: 'Set up MySQL database and configure Prisma ORM for the Ecomdrop IA Connector'
+---
+
+## Overview
+
+The Ecomdrop IA Connector uses **MySQL 8.0** as its production database with **Prisma ORM** for type-safe database access. This guide covers database installation, configuration, and migration management.
+
+<Note>
+  The application previously used SQLite but has been migrated to MySQL for better scalability, performance, and production readiness.
+</Note>
+
+## Database Requirements
+
+### MySQL Version
+
+- **Required:** MySQL 8.0 or higher
+- **Character Set:** UTF8MB4 (for full Unicode support including emojis)
+- **Collation:** utf8mb4_unicode_ci
+
+### System Requirements
+
+- **Memory:** Minimum 512MB RAM for MySQL
+- **Storage:** Minimum 1GB available disk space
+- **Network:** Port 3306 accessible (default MySQL port)
+
+## Installation
+
+### Local MySQL Installation
+
+<Tabs>
+  <Tab title="macOS">
+    Install MySQL using Homebrew:
+
+    ```bash
+    # Install MySQL 8.0
+    brew install mysql@8.0
+
+    # Start MySQL service
+    brew services start mysql@8.0
+
+    # Secure installation
+    mysql_secure_installation
+    ```
+
+    **Post-Installation:**
+    ```bash
+    # Add MySQL to PATH (add to ~/.zshrc or ~/.bash_profile)
+    echo 'export PATH="/opt/homebrew/opt/mysql@8.0/bin:$PATH"' >> ~/.zshrc
+    source ~/.zshrc
+
+    # Verify installation
+    mysql --version
+    ```
+  </Tab>
+
+  <Tab title="Ubuntu/Debian">
+    Install MySQL from APT repository:
+
+    ```bash
+    # Update package index
+    sudo apt update
+
+    # Install MySQL Server
+    sudo apt install mysql-server-8.0
+
+    # Start MySQL service
+    sudo systemctl start mysql
+    sudo systemctl enable mysql
+
+    # Secure installation
+    sudo mysql_secure_installation
+    ```
+
+    **Post-Installation:**
+    ```bash
+    # Verify installation
+    mysql --version
+
+    # Check service status
+    sudo systemctl status mysql
+    ```
+  </Tab>
+
+  <Tab title="Windows">
+    Install MySQL using the installer:
+
+    1. Download MySQL 8.0 from [mysql.com/downloads](https://dev.mysql.com/downloads/mysql/)
+    2. Run the installer and choose "Developer Default"
+    3. Follow the installation wizard:
+       - Set root password
+       - Configure MySQL Server
+       - Start MySQL as Windows Service
+    4. Verify installation in Command Prompt:
+       ```bash
+       mysql --version
+       ```
+  </Tab>
+
+  <Tab title="Docker">
+    Run MySQL in a Docker container:
+
+    ```bash
+    # Create and start MySQL container
+    docker run -d \
+      --name mysql \
+      -e MYSQL_ROOT_PASSWORD=your_secure_password \
+      -e MYSQL_DATABASE=shopify_app \
+      -e MYSQL_USER=shopify_user \
+      -e MYSQL_PASSWORD=user_password \
+      -p 3306:3306 \
+      -v mysql_data:/var/lib/mysql \
+      mysql:8.0 \
+      --character-set-server=utf8mb4 \
+      --collation-server=utf8mb4_unicode_ci
+
+    # Verify container is running
+    docker ps | grep mysql
+
+    # View logs
+    docker logs mysql
+    ```
+  </Tab>
+</Tabs>
+
+### Cloud Database Providers
+
+For production deployments, consider managed MySQL services:
+
+<CardGroup cols={2}>
+  <Card title="PlanetScale" icon="database" href="https://planetscale.com/">
+    Serverless MySQL platform with horizontal sharding and automatic backups.
+    
+    **Pros:** Free tier, serverless scaling, branching workflows
+    **Cons:** No foreign key constraints in serverless tier
+  </Card>
+  
+  <Card title="Digital Ocean" icon="water" href="https://www.digitalocean.com/products/managed-databases-mysql">
+    Managed MySQL databases with automated backups and monitoring.
+    
+    **Pros:** Simple pricing, good performance, automatic failover
+    **Cons:** Starts at $15/month
+  </Card>
+  
+  <Card title="AWS RDS" icon="aws" href="https://aws.amazon.com/rds/mysql/">
+    Amazon's managed MySQL service with high availability.
+    
+    **Pros:** Enterprise features, Aurora compatibility, multi-AZ
+    **Cons:** Complex pricing, requires AWS knowledge
+  </Card>
+  
+  <Card title="Google Cloud SQL" icon="google" href="https://cloud.google.com/sql/docs/mysql">
+    Fully-managed MySQL on Google Cloud Platform.
+    
+    **Pros:** Google Cloud integration, automatic backups
+    **Cons:** Requires GCP account, minimum costs
+  </Card>
+</CardGroup>
+
+## Database Configuration
+
+### Create Database and User
+
+<Steps>
+  <Step title="Connect to MySQL">
+    Connect to MySQL as root:
+
+    ```bash
+    mysql -u root -p
+    ```
+
+    Enter your root password when prompted.
+  </Step>
+
+  <Step title="Create Database">
+    Create the application database:
+
+    ```sql
+    CREATE DATABASE shopify_app 
+      CHARACTER SET utf8mb4 
+      COLLATE utf8mb4_unicode_ci;
+    ```
+
+    <Note>
+      The `utf8mb4` character set is required for full Unicode support, including emojis and special characters.
+    </Note>
+  </Step>
+
+  <Step title="Create User and Grant Permissions">
+    Create a dedicated user for the application:
+
+    ```sql
+    -- Create user (replace 'your_secure_password' with a strong password)
+    CREATE USER 'shopify_user'@'localhost' 
+      IDENTIFIED BY 'your_secure_password';
+
+    -- Grant all privileges on the database
+    GRANT ALL PRIVILEGES ON shopify_app.* 
+      TO 'shopify_user'@'localhost';
+
+    -- Apply changes
+    FLUSH PRIVILEGES;
+    ```
+
+    <Warning>
+      Use a strong, unique password for the database user. Store it securely in your `.env` file.
+    </Warning>
+  </Step>
+
+  <Step title="Verify Database Creation">
+    Verify the database was created:
+
+    ```sql
+    -- Show all databases
+    SHOW DATABASES;
+
+    -- Verify character set
+    SELECT DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME
+    FROM information_schema.SCHEMATA 
+    WHERE SCHEMA_NAME = 'shopify_app';
+
+    -- Exit MySQL
+    EXIT;
+    ```
+  </Step>
+</Steps>
+
+### Configure DATABASE_URL
+
+Add the database connection string to your `.env` file:
+
+```bash .env
+DATABASE_URL="mysql://shopify_user:your_secure_password@localhost:3306/shopify_app"
+```
+
+**Connection String Format:**
+```
+mysql://[user]:[password]@[host]:[port]/[database]?[parameters]
+```
+
+**Examples:**
+
+<CodeGroup>
+```bash Local Development
+DATABASE_URL="mysql://shopify_user:password123@localhost:3306/shopify_app"
+```
+
+```bash Remote MySQL
+DATABASE_URL="mysql://admin:secure_pass@192.168.1.100:3306/shopify_app"
+```
+
+```bash Docker Container
+DATABASE_URL="mysql://shopify_user:password@mysql:3306/shopify_app"
+```
+
+```bash PlanetScale
+DATABASE_URL="mysql://user:pscale_pw_xxx@host.us-east-1.psdb.cloud/shopify_app?sslaccept=strict"
+```
+
+```bash With SSL (Production)
+DATABASE_URL="mysql://user:password@host:3306/shopify_app?ssl-mode=REQUIRED"
+```
+</CodeGroup>
+
+## Prisma Setup
+
+### Understanding Prisma Schema
+
+The Prisma schema defines your database structure. View the schema:
+
+```bash
+cat prisma/schema.prisma
+```
+
+**Database Schema Overview:**
+
+```prisma prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// Shopify app sessions and OAuth data
+model Session {
+  id            String    @id
+  shop          String    @db.VarChar(255)
+  state         String    @db.VarChar(255)
+  isOnline      Boolean   @default(false)
+  scope         String?   @db.Text
+  expires       DateTime?
+  accessToken   String    @db.Text
+  userId        BigInt?
+  firstName     String?   @db.VarChar(255)
+  lastName      String?   @db.VarChar(255)
+  email         String?   @db.VarChar(255)
+  accountOwner  Boolean   @default(false)
+  locale        String?   @db.VarChar(10)
+  collaborator  Boolean?
+  emailVerified Boolean?
+
+  @@index([shop])
+}
+
+// Store-specific configuration
+model ShopConfiguration {
+  id                      String   @id @default(uuid())
+  shop                    String   @unique @db.VarChar(255)
+  ecomdropApiKey          String?  @db.Text
+  nuevoPedidoFlowId       String?  @db.VarChar(255)
+  carritoAbandonadoFlowId String?  @db.VarChar(255)
+  dropiStoreName          String?  @db.VarChar(255)
+  dropiCountry            String?  @db.VarChar(10)
+  dropiToken              String?  @db.Text
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@index([shop])
+}
+
+// Product mappings between Dropi and Shopify
+model ProductAssociation {
+  id                    String   @id @default(uuid())
+  shop                  String   @db.VarChar(255)
+  dropiProductId        String   @db.VarChar(255)
+  shopifyProductId      String   @db.VarChar(255)
+  dropiProductName      String?  @db.VarChar(500)
+  shopifyProductTitle   String?  @db.VarChar(500)
+  importType            String   @db.VarChar(50)
+  dropiVariations       String?  @db.Text
+  saveDropiName         Boolean  @default(true)
+  saveDropiDescription  Boolean  @default(true)
+  customPrice           String?  @db.VarChar(50)
+  useSuggestedBarcode   Boolean  @default(false)
+  saveDropiImages       Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@unique([shop, dropiProductId, shopifyProductId])
+  @@index([shop])
+  @@index([dropiProductId])
+  @@index([shopifyProductId])
+}
+
+// AI assistant configuration per store
+model AIConfiguration {
+  id                      String   @id @default(uuid())
+  shop                    String   @unique @db.VarChar(255)
+  agentName               String?  @db.VarChar(255)
+  companyName             String?  @db.VarChar(255)
+  companyDescription      String?  @db.Text
+  paymentMethods          String?  @db.Text
+  companyPolicies         String?  @db.Text
+  faq                     String?  @db.Text
+  postSaleFaq             String?  @db.Text
+  rules                   String?  @db.Text
+  notifications           String?  @db.Text
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@index([shop])
+}
+```
+
+### Generate Prisma Client
+
+Generate the Prisma Client based on your schema:
+
+```bash
+npx prisma generate
+```
+
+This creates a type-safe database client in `node_modules/@prisma/client`.
+
+**Expected Output:**
+```bash
+✔ Generated Prisma Client (v6.16.3) to ./node_modules/@prisma/client in 123ms
+```
+
+### Run Database Migrations
+
+Apply all database migrations to create tables:
+
+```bash
+npx prisma migrate deploy
+```
+
+**Expected Output:**
+```bash
+✔ Applied 4 migrations in 234ms
+
+- 20240101000000_init
+- 20240115000000_add_shop_configuration
+- 20240201000000_add_product_association
+- 20240215000000_add_ai_configuration
+```
+
+<Note>
+  `migrate deploy` applies migrations without prompting. Use `migrate dev` in development for interactive migration creation.
+</Note>
+
+### Complete Setup Script
+
+Run the complete setup (generate + migrate):
+
+```bash
+npm run setup
+```
+
+This runs:
+1. `prisma generate` - Generate Prisma Client
+2. `prisma migrate deploy` - Apply all migrations
+
+## Database Management
+
+### Prisma Studio
+
+Prisma Studio is a visual database browser:
+
+```bash
+npx prisma studio
+```
+
+This opens a web interface at `http://localhost:5555` where you can:
+- View all tables and records
+- Edit data directly
+- Filter and search records
+- Visualize relationships
+
+<Tip>
+  Prisma Studio is perfect for debugging and testing during development.
+</Tip>
+
+### Common Database Operations
+
+<Tabs>
+  <Tab title="Create Migration">
+    Create a new migration after changing the schema:
+
+    ```bash
+    # 1. Edit prisma/schema.prisma
+    nano prisma/schema.prisma
+
+    # 2. Create migration
+    npx prisma migrate dev --name add_new_field
+
+    # 3. Prisma will:
+    #    - Create migration file
+    #    - Apply migration to database
+    #    - Regenerate Prisma Client
+    ```
+  </Tab>
+
+  <Tab title="Reset Database">
+    Reset database (⚠️ deletes all data):
+
+    ```bash
+    npx prisma migrate reset
+
+    # This will:
+    # 1. Drop the database
+    # 2. Create a new database
+    # 3. Apply all migrations
+    # 4. Run seed script (if configured)
+    ```
+
+    <Warning>
+      Only use `migrate reset` in development. It will delete all data!
+    </Warning>
+  </Tab>
+
+  <Tab title="Pull Schema">
+    Pull schema from existing database:
+
+    ```bash
+    npx prisma db pull
+
+    # Updates prisma/schema.prisma to match
+    # the existing database structure
+    ```
+  </Tab>
+
+  <Tab title="Push Schema">
+    Push schema changes without creating migration:
+
+    ```bash
+    npx prisma db push
+
+    # Quick way to sync schema in development
+    # (not recommended for production)
+    ```
+  </Tab>
+</Tabs>
+
+### Backup and Restore
+
+<Steps>
+  <Step title="Create Backup">
+    Create a backup of your database:
+
+    ```bash
+    # Using mysqldump
+    mysqldump -u shopify_user -p shopify_app > backup_$(date +%Y%m%d_%H%M%S).sql
+
+    # Or with Docker
+    docker exec mysql mysqldump -u shopify_user -p shopify_app > backup.sql
+    ```
+  </Step>
+
+  <Step title="Restore Backup">
+    Restore from a backup file:
+
+    ```bash
+    # Using mysql client
+    mysql -u shopify_user -p shopify_app < backup.sql
+
+    # Or with Docker
+    docker exec -i mysql mysql -u shopify_user -p shopify_app < backup.sql
+    ```
+  </Step>
+
+  <Step title="Automated Backups">
+    Set up automated daily backups (Linux/macOS):
+
+    ```bash crontab
+    # Add to crontab (crontab -e)
+    0 2 * * * mysqldump -u shopify_user -p$(cat /path/to/.env | grep MYSQL_PASSWORD | cut -d '=' -f2) shopify_app | gzip > /backups/shopify_app_$(date +\%Y\%m\%d).sql.gz
+    ```
+  </Step>
+</Steps>
+
+## Production Considerations
+
+### MySQL Configuration for Production
+
+Optimal MySQL settings for production (in `my.cnf` or `my.ini`):
+
+```ini my.cnf
+[mysqld]
+# Character set
+character-set-server = utf8mb4
+collation-server = utf8mb4_unicode_ci
+
+# Performance
+max_allowed_packet = 256M
+innodb_buffer_pool_size = 1G
+innodb_log_file_size = 256M
+innodb_flush_log_at_trx_commit = 2
+max_connections = 200
+
+# Logging
+log_error = /var/log/mysql/error.log
+slow_query_log = 1
+slow_query_log_file = /var/log/mysql/slow.log
+long_query_time = 2
+```
+
+### Connection Pooling
+
+Prisma handles connection pooling automatically. Configure in `prisma/schema.prisma`:
+
+```prisma prisma/schema.prisma
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+  
+  // Connection pool settings
+  relationMode = "prisma"
+}
+```
+
+### SSL Connections
+
+For production, always use SSL:
+
+```bash
+DATABASE_URL="mysql://user:password@host:3306/database?ssl-mode=REQUIRED"
+```
+
+## Troubleshooting
+
+### Connection Refused
+
+```bash
+error: Error querying the database: Can't connect to MySQL server
+```
+
+**Solutions:**
+
+1. Verify MySQL is running:
+   ```bash
+   # Check service status
+   sudo systemctl status mysql
+   
+   # Or with Docker
+   docker ps | grep mysql
+   ```
+
+2. Check MySQL is listening on port 3306:
+   ```bash
+   netstat -an | grep 3306
+   ```
+
+3. Test connection manually:
+   ```bash
+   mysql -h localhost -P 3306 -u shopify_user -p
+   ```
+
+### Authentication Failed
+
+```bash
+error: Access denied for user 'shopify_user'@'localhost'
+```
+
+**Solutions:**
+
+1. Verify user exists:
+   ```sql
+   SELECT user, host FROM mysql.user WHERE user = 'shopify_user';
+   ```
+
+2. Reset user password:
+   ```sql
+   ALTER USER 'shopify_user'@'localhost' IDENTIFIED BY 'new_password';
+   FLUSH PRIVILEGES;
+   ```
+
+3. Check DATABASE_URL has correct password
+
+### Table Does Not Exist
+
+```bash
+error: The table `Session` does not exist in the current database.
+```
+
+**Solution:** Run migrations:
+
+```bash
+npm run setup
+```
+
+### Migration Failed
+
+```bash
+error: Migration failed to apply
+```
+
+**Solutions:**
+
+1. Check MySQL version (must be 8.0+):
+   ```bash
+   mysql --version
+   ```
+
+2. Verify database character set:
+   ```sql
+   SHOW VARIABLES LIKE 'character_set%';
+   ```
+
+3. Reset and retry:
+   ```bash
+   npx prisma migrate reset
+   npx prisma migrate deploy
+   ```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart Guide" icon="rocket" href="/getting-started/quickstart">
+    Complete setup and run your first app instance
+  </Card>
+  
+  <Card title="Development Guide" icon="code" href="/development">
+    Learn about development workflow and database queries
+  </Card>
+  
+  <Card title="Deployment" icon="server" href="/deployment/production">
+    Deploy to production with Docker and managed MySQL
+  </Card>
+  
+  <Card title="API Reference" icon="book" href="/api-reference">
+    Explore database models and Prisma queries
+  </Card>
+</CardGroup>

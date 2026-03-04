@@ -1,0 +1,808 @@
+---
+title: "Troubleshooting"
+description: "Common issues and solutions for deploying the Ecomdrop IA Connector"
+---
+
+## Overview
+
+This guide covers common issues you may encounter when deploying the Ecomdrop IA Connector and provides step-by-step solutions.
+
+## Database Connection Issues
+
+### MySQL Connection Refused
+
+<Accordion title="Symptom">
+  ```
+  Error: connect ECONNREFUSED mysql:3306
+  ```
+  or
+  ```
+  Can't connect to MySQL server on 'mysql' (111)
+  ```
+</Accordion>
+
+<Accordion title="Solution">
+  <Steps>
+    <Step title="Verify MySQL is running">
+      ```bash
+      # Check MySQL service status
+      docker service ps shopify-app_mysql
+
+      # Check MySQL logs
+      docker service logs shopify-app_mysql
+      ```
+    </Step>
+
+    <Step title="Wait for MySQL to be ready">
+      The application includes a wait script, but if it times out:
+
+      ```bash
+      # Check if MySQL is accepting connections
+      docker exec $(docker ps -q -f name=shopify-app_mysql) \
+        mysqladmin ping -h localhost -uroot -p${MYSQL_ROOT_PASSWORD}
+      ```
+
+      Expected output: `mysqld is alive`
+    </Step>
+
+    <Step title="Verify network connectivity">
+      ```bash
+      # Check if both services are on the same network
+      docker network inspect EcomdropNet
+      ```
+
+      Both `mysql` and `shopify_app` should be listed.
+    </Step>
+
+    <Step title="Check DATABASE_URL format">
+      Ensure your `.env` has the correct format:
+
+      ```bash
+      DATABASE_URL="mysql://shopify_user:${MYSQL_PASSWORD}@mysql:3306/shopify_app"
+      ```
+
+      <Warning>
+        The hostname must be `mysql` (the service name), not `localhost` or an IP address.
+      </Warning>
+    </Step>
+  </Steps>
+</Accordion>
+
+### Database Tables Don't Exist
+
+<Accordion title="Symptom">
+  ```
+  The table `Session` does not exist in the current database.
+  ```
+</Accordion>
+
+<Accordion title="Solution">
+  <Steps>
+    <Step title="Check if migrations ran">
+      ```bash
+      # View application logs
+      docker service logs shopify-app_shopify_app | grep "prisma migrate"
+      ```
+    </Step>
+
+    <Step title="Run migrations manually">
+      ```bash
+      # Execute in a running container
+      docker exec -it $(docker ps -q -f name=shopify-app_shopify_app) \
+        npm run setup
+      ```
+    </Step>
+
+    <Step title="Verify database schema">
+      ```bash
+      # Connect to MySQL
+      docker exec -it $(docker ps -q -f name=shopify-app_mysql) \
+        mysql -u shopify_user -p${MYSQL_PASSWORD} shopify_app
+
+      # In MySQL shell
+      SHOW TABLES;
+      ```
+
+      You should see: `Session`, `ShopConfiguration`, `ProductAssociation`, `AIConfiguration`, etc.
+    </Step>
+
+    <Step title="If tables still missing, reset database">
+      <Warning>
+        This will delete all data!
+      </Warning>
+
+      ```bash
+      # Drop and recreate database
+      docker exec -it $(docker ps -q -f name=shopify-app_mysql) \
+        mysql -u root -p${MYSQL_ROOT_PASSWORD} -e "
+          DROP DATABASE IF EXISTS shopify_app;
+          CREATE DATABASE shopify_app CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+          GRANT ALL PRIVILEGES ON shopify_app.* TO 'shopify_user'@'%';
+          FLUSH PRIVILEGES;
+        "
+
+      # Restart application to run migrations
+      docker service update --force shopify-app_shopify_app
+      ```
+    </Step>
+  </Steps>
+</Accordion>
+
+### Authentication Plugin Error
+
+<Accordion title="Symptom">
+  ```
+  Client does not support authentication protocol requested by server
+  ```
+</Accordion>
+
+<Accordion title="Solution">
+  The MySQL service is configured with `mysql_native_password`, but if you still see this error:
+
+  ```bash
+  # Connect to MySQL
+  docker exec -it $(docker ps -q -f name=shopify-app_mysql) \
+    mysql -u root -p${MYSQL_ROOT_PASSWORD}
+
+  # In MySQL shell
+  ALTER USER 'shopify_user'@'%' IDENTIFIED WITH mysql_native_password BY 'your_password';
+  FLUSH PRIVILEGES;
+  ```
+</Accordion>
+
+## Port Conflicts
+
+### Port Already in Use
+
+<Accordion title="Symptom">
+  ```
+  Error starting userland proxy: listen tcp 0.0.0.0:3000: bind: address already in use
+  ```
+</Accordion>
+
+<Accordion title="Solution">
+  <Steps>
+    <Step title="Find process using the port">
+      ```bash
+      # Find process on port 3000
+      lsof -i :3000
+      # or
+      netstat -tlnp | grep :3000
+      ```
+    </Step>
+
+    <Step title="Stop the conflicting process">
+      ```bash
+      # Kill the process (replace PID with actual process ID)
+      kill -9 <PID>
+      ```
+    </Step>
+
+    <Step title="Or change the application port">
+      In `.env`:
+      ```bash
+      PORT=3001
+      ```
+
+      <Note>
+        If using Traefik, the internal port doesn't matter as Traefik handles external routing.
+      </Note>
+    </Step>
+  </Steps>
+</Accordion>
+
+### MySQL Port Conflict
+
+<Accordion title="Symptom">
+  Port 3306 already in use by another MySQL instance.
+</Accordion>
+
+<Accordion title="Solution">
+  <CodeGroup>
+  ```bash Stop Local MySQL
+  # Stop local MySQL service
+  sudo systemctl stop mysql
+  sudo systemctl disable mysql
+  ```
+
+  ```bash Change Docker Port
+  # In docker-compose.yml, expose different port
+  ports:
+    - "3307:3306"  # External:Internal
+
+  # Update DATABASE_URL
+  DATABASE_URL="mysql://shopify_user:password@mysql:3306/shopify_app"
+  # Note: Keep internal port as 3306
+  ```
+  </CodeGroup>
+</Accordion>
+
+## Build Errors
+
+### npm ci Failed
+
+<Accordion title="Symptom">
+  ```
+  npm ERR! The `npm ci` command can only install packages when your package.json and package-lock.json are in sync
+  ```
+</Accordion>
+
+<Accordion title="Solution">
+  ```bash
+  # Update package-lock.json
+  npm install
+
+  # Commit updated package-lock.json
+  git add package-lock.json
+  git commit -m "Update package-lock.json"
+
+  # Rebuild Docker image
+  docker build -t shopify-app_shopify_app:latest .
+  ```
+</Accordion>
+
+### Build Fails on Prisma Generate
+
+<Accordion title="Symptom">
+  ```
+  Error: @prisma/client did not initialize yet
+  ```
+</Accordion>
+
+<Accordion title="Solution">
+  <Steps>
+    <Step title="Verify Prisma schema is valid">
+      ```bash
+      npx prisma validate
+      ```
+    </Step>
+
+    <Step title="Ensure database URL is set during build">
+      The Dockerfile needs a placeholder DATABASE_URL during build:
+
+      ```dockerfile
+      # In Dockerfile, add before npm run build
+      ENV DATABASE_URL="mysql://user:pass@localhost:3306/db"
+      ```
+    </Step>
+
+    <Step title="Rebuild with build args">
+      ```bash
+      docker build \
+        --build-arg DATABASE_URL="mysql://user:pass@localhost:3306/db" \
+        -t shopify-app_shopify_app:latest .
+      ```
+    </Step>
+  </Steps>
+</Accordion>
+
+### Out of Memory During Build
+
+<Accordion title="Symptom">
+  ```
+  FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory
+  ```
+</Accordion>
+
+<Accordion title="Solution">
+  ```bash
+  # Build with increased memory
+  docker build \
+    --memory=4g \
+    -t shopify-app_shopify_app:latest .
+
+  # Or add to Dockerfile
+  ENV NODE_OPTIONS="--max-old-space-size=4096"
+  ```
+</Accordion>
+
+## Application Startup Issues
+
+### Application Crashes on Startup
+
+<Accordion title="Symptom">
+  Service keeps restarting or shows "Shutdown" status.
+</Accordion>
+
+<Accordion title="Solution">
+  <Steps>
+    <Step title="Check application logs">
+      ```bash
+      # View recent logs
+      docker service logs --tail 100 shopify-app_shopify_app
+
+      # Follow logs in real-time
+      docker service logs -f shopify-app_shopify_app
+      ```
+    </Step>
+
+    <Step title="Common startup errors">
+      <Accordion title="Missing environment variables">
+        ```
+        Error: SHOPIFY_API_KEY is required
+        ```
+
+        **Solution:** Verify all required environment variables in `.env`:
+        ```bash
+        docker service inspect shopify-app_shopify_app --pretty | grep -A 20 Env
+        ```
+      </Accordion>
+
+      <Accordion title="Database migration timeout">
+        ```
+        MySQL did not become available after 60 seconds
+        ```
+
+        **Solution:** Increase wait timeout in Dockerfile or ensure MySQL has enough resources.
+      </Accordion>
+
+      <Accordion title="Port binding issues">
+        ```
+        Error: listen EADDRINUSE: address already in use :::3000
+        ```
+
+        **Solution:** See [Port Conflicts](#port-conflicts) section.
+      </Accordion>
+    </Step>
+
+    <Step title="Verify service configuration">
+      ```bash
+      # Inspect service
+      docker service inspect shopify-app_shopify_app --pretty
+
+      # Check task status
+      docker service ps shopify-app_shopify_app --no-trunc
+      ```
+    </Step>
+  </Steps>
+</Accordion>
+
+### Service Won't Start After Update
+
+<Accordion title="Symptom">
+  After running `docker service update`, service fails to start.
+</Accordion>
+
+<Accordion title="Solution">
+  ```bash
+  # Rollback to previous version
+  docker service rollback shopify-app_shopify_app
+
+  # Check what went wrong
+  docker service ps shopify-app_shopify_app
+
+  # Force recreation
+  docker service update --force shopify-app_shopify_app
+  ```
+</Accordion>
+
+## SSL/HTTPS Issues
+
+### Let's Encrypt Certificate Not Issued
+
+<Accordion title="Symptom">
+  Browser shows "Not Secure" or certificate errors.
+</Accordion>
+
+<Accordion title="Solution">
+  <Steps>
+    <Step title="Check Traefik logs">
+      ```bash
+      docker service logs traefik | grep -i acme
+      docker service logs traefik | grep -i letsencrypt
+      ```
+    </Step>
+
+    <Step title="Verify DNS is correct">
+      ```bash
+      # Check DNS resolution
+      nslookup connector.ecomdrop.io
+      dig connector.ecomdrop.io
+
+      # Should point to your server IP
+      ```
+    </Step>
+
+    <Step title="Ensure port 80 is accessible">
+      Let's Encrypt uses HTTP-01 challenge on port 80:
+
+      ```bash
+      # Test from external server or use online tools
+      curl -I http://connector.ecomdrop.io
+      ```
+    </Step>
+
+    <Step title="Check rate limits">
+      Let's Encrypt has rate limits (50 certificates per domain per week).
+
+      If you hit the limit, use Let's Encrypt staging:
+
+      ```yaml
+      # In traefik.yml
+      certificatesResolvers:
+        letsencryptresolver:
+          acme:
+            caServer: https://acme-staging-v02.api.letsencrypt.org/directory
+      ```
+    </Step>
+
+    <Step title="Reset ACME storage">
+      <Warning>
+        This will delete existing certificates!
+      </Warning>
+
+      ```bash
+      # Remove ACME storage
+      docker volume rm traefik_traefik-certificates
+
+      # Restart Traefik
+      docker service update --force traefik_traefik
+      ```
+    </Step>
+  </Steps>
+</Accordion>
+
+### Mixed Content Warnings
+
+<Accordion title="Symptom">
+  ```
+  Mixed Content: The page at 'https://...' was loaded over HTTPS, but requested an insecure resource
+  ```
+</Accordion>
+
+<Accordion title="Solution">
+  Ensure all resources use HTTPS or protocol-relative URLs:
+
+  ```javascript
+  // Bad
+  <script src="http://example.com/script.js"></script>
+
+  // Good
+  <script src="https://example.com/script.js"></script>
+
+  // Also good (protocol-relative)
+  <script src="//example.com/script.js"></script>
+  ```
+</Accordion>
+
+## Traefik Routing Issues
+
+### 404 Not Found
+
+<Accordion title="Symptom">
+  Accessing `https://connector.ecomdrop.io` returns 404.
+</Accordion>
+
+<Accordion title="Solution">
+  <Steps>
+    <Step title="Verify service labels">
+      ```bash
+      docker service inspect shopify-app_shopify_app --pretty | grep -A 10 Labels
+      ```
+
+      Should include:
+      ```yaml
+      traefik.enable=true
+      traefik.http.routers.shopify_app.rule=Host(`connector.ecomdrop.io`)
+      ```
+    </Step>
+
+    <Step title="Check Traefik can reach the service">
+      ```bash
+      # Verify both on same network
+      docker network inspect EcomdropNet
+      ```
+    </Step>
+
+    <Step title="Test internal connectivity">
+      ```bash
+      # From within Traefik container
+      docker exec -it $(docker ps -q -f name=traefik) \
+        wget -O- http://shopify_app:3000
+      ```
+    </Step>
+
+    <Step title="Check Traefik dashboard">
+      If Traefik dashboard is enabled, check for the router and service at `https://traefik.ecomdrop.io`
+    </Step>
+  </Steps>
+</Accordion>
+
+### Gateway Timeout (504)
+
+<Accordion title="Symptom">
+  ```
+  504 Gateway Timeout
+  ```
+</Accordion>
+
+<Accordion title="Solution">
+  <Steps>
+    <Step title="Check application is responding">
+      ```bash
+      # Test directly
+      docker exec -it $(docker ps -q -f name=shopify-app_shopify_app) \
+        wget -O- http://localhost:3000
+      ```
+    </Step>
+
+    <Step title="Increase timeout in Traefik">
+      Add to docker-compose.yml labels:
+
+      ```yaml
+      - traefik.http.services.shopify_app.loadbalancer.server.responseTimeout=60s
+      ```
+    </Step>
+
+    <Step title="Check for slow database queries">
+      ```bash
+      # Enable MySQL slow query log
+      docker exec -it $(docker ps -q -f name=shopify-app_mysql) \
+        mysql -u root -p${MYSQL_ROOT_PASSWORD} -e "
+          SET GLOBAL slow_query_log = 'ON';
+          SET GLOBAL long_query_time = 2;
+        "
+      ```
+    </Step>
+  </Steps>
+</Accordion>
+
+## Performance Issues
+
+### High Memory Usage
+
+<Accordion title="Symptom">
+  Application uses excessive memory or gets OOM killed.
+</Accordion>
+
+<Accordion title="Solution">
+  <Steps>
+    <Step title="Monitor resource usage">
+      ```bash
+      # Real-time monitoring
+      docker stats
+
+      # Check service resources
+      docker service ps shopify-app_shopify_app --no-trunc
+      ```
+    </Step>
+
+    <Step title="Set memory limits">
+      In docker-compose.yml:
+
+      ```yaml
+      deploy:
+        resources:
+          limits:
+            memory: 1G
+          reservations:
+            memory: 512M
+      ```
+    </Step>
+
+    <Step title="Optimize Node.js memory">
+      ```yaml
+      environment:
+        NODE_OPTIONS: "--max-old-space-size=768"
+      ```
+    </Step>
+  </Steps>
+</Accordion>
+
+### Slow Database Queries
+
+<Accordion title="Symptom">
+  Application responses are slow.
+</Accordion>
+
+<Accordion title="Solution">
+  <Steps>
+    <Step title="Enable slow query log">
+      ```bash
+      docker exec -it $(docker ps -q -f name=shopify-app_mysql) \
+        mysql -u root -p${MYSQL_ROOT_PASSWORD} -e "
+          SET GLOBAL slow_query_log = 'ON';
+          SET GLOBAL long_query_time = 1;
+          SET GLOBAL log_queries_not_using_indexes = 'ON';
+        "
+      ```
+    </Step>
+
+    <Step title="Check for missing indexes">
+      ```sql
+      -- In MySQL
+      SELECT * FROM information_schema.STATISTICS 
+      WHERE TABLE_SCHEMA = 'shopify_app';
+      ```
+    </Step>
+
+    <Step title="Optimize MySQL configuration">
+      See [Production Deployment - MySQL Tuning](/deployment/production#mysql-tuning)
+    </Step>
+  </Steps>
+</Accordion>
+
+## Debugging Tools
+
+### Interactive Shell in Container
+
+```bash
+# Application container
+docker exec -it $(docker ps -q -f name=shopify-app_shopify_app) sh
+
+# MySQL container
+docker exec -it $(docker ps -q -f name=shopify-app_mysql) bash
+```
+
+### Network Debugging
+
+```bash
+# Install network tools in container
+docker exec -it $(docker ps -q -f name=shopify-app_shopify_app) \
+  apk add --no-cache curl netcat-openbsd
+
+# Test connectivity
+docker exec -it $(docker ps -q -f name=shopify-app_shopify_app) \
+  nc -zv mysql 3306
+```
+
+### View Container Processes
+
+```bash
+# Show processes in container
+docker exec -it $(docker ps -q -f name=shopify-app_shopify_app) ps aux
+```
+
+### Export Container Logs
+
+```bash
+# Export last 24 hours of logs
+docker service logs --since 24h shopify-app_shopify_app > app-debug-$(date +%Y%m%d).log
+
+# Export with timestamps
+docker service logs --timestamps shopify-app_shopify_app > app-debug-timestamps.log
+```
+
+## Common Error Messages
+
+<AccordionGroup>
+  <Accordion title="Error: Cannot find module '@prisma/client'">
+    **Cause:** Prisma Client not generated.
+
+    **Solution:**
+    ```bash
+    docker exec -it $(docker ps -q -f name=shopify-app_shopify_app) \
+      npx prisma generate
+    ```
+  </Accordion>
+
+  <Accordion title="Error: SHOPIFY_API_KEY is required">
+    **Cause:** Missing environment variable.
+
+    **Solution:** Add to `.env` and redeploy:
+    ```bash
+    SHOPIFY_API_KEY=your_api_key
+    SHOPIFY_API_SECRET=your_api_secret
+    ```
+  </Accordion>
+
+  <Accordion title="Error: Invalid SESSION_SECRET">
+    **Cause:** Session secret not set or invalid.
+
+    **Solution:**
+    ```bash
+    # Generate new session secret
+    openssl rand -base64 32
+
+    # Add to .env
+    SESSION_SECRET=generated_secret_here
+    ```
+  </Accordion>
+
+  <Accordion title="Network shopify-app_EcomdropNet not found">
+    **Cause:** External network doesn't exist.
+
+    **Solution:**
+    ```bash
+    docker network create --driver overlay EcomdropNet
+    ```
+  </Accordion>
+
+  <Accordion title="Failed to load: api.shopify.com">
+    **Cause:** Network connectivity issues or firewall blocking.
+
+    **Solution:**
+    ```bash
+    # Test connectivity
+    docker exec -it $(docker ps -q -f name=shopify-app_shopify_app) \
+      wget -O- https://api.shopify.com
+
+    # Check DNS
+    docker exec -it $(docker ps -q -f name=shopify-app_shopify_app) \
+      nslookup api.shopify.com
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Getting Help
+
+If you're still experiencing issues:
+
+<Steps>
+  <Step title="Gather diagnostic information">
+    ```bash
+    # Create diagnostic report
+    {
+      echo "=== Docker Version ==="
+      docker version
+      echo ""
+      echo "=== Service Status ==="
+      docker service ls
+      echo ""
+      echo "=== Application Service ==="
+      docker service ps shopify-app_shopify_app --no-trunc
+      echo ""
+      echo "=== Application Logs ==="
+      docker service logs --tail 50 shopify-app_shopify_app
+      echo ""
+      echo "=== MySQL Service ==="
+      docker service ps shopify-app_mysql --no-trunc
+      echo ""
+      echo "=== MySQL Logs ==="
+      docker service logs --tail 50 shopify-app_mysql
+    } > diagnostic-report-$(date +%Y%m%d_%H%M%S).txt
+    ```
+  </Step>
+
+  <Step title="Check documentation">
+    - [Docker Deployment Guide](/deployment/docker)
+    - [Production Deployment Guide](/deployment/production)
+    - [Shopify App Documentation](https://shopify.dev/docs/apps)
+  </Step>
+
+  <Step title="Review logs carefully">
+    Error messages usually contain valuable information about the root cause.
+  </Step>
+
+  <Step title="Search for similar issues">
+    Check GitHub issues for the project repository.
+  </Step>
+</Steps>
+
+## Preventive Measures
+
+<CardGroup cols={2}>
+  <Card title="Regular Backups" icon="database">
+    Set up automated database backups to prevent data loss.
+    
+    See [Production Deployment - Database Backups](/deployment/production#database-backups)
+  </Card>
+
+  <Card title="Monitoring" icon="chart-line">
+    Monitor your application health:
+    - Resource usage (CPU, memory, disk)
+    - Error rates
+    - Response times
+  </Card>
+
+  <Card title="Health Checks" icon="heartbeat">
+    Configure proper health checks:
+    ```yaml
+    healthcheck:
+      test: ["CMD", "wget", "-O-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    ```
+  </Card>
+
+  <Card title="Log Retention" icon="file-text">
+    Configure log rotation to prevent disk space issues:
+    ```bash
+    docker service update \
+      --log-opt max-size=10m \
+      --log-opt max-file=3 \
+      shopify-app_shopify_app
+    ```
+  </Card>
+</CardGroup>

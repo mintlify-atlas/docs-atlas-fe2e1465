@@ -1,0 +1,505 @@
+---
+title: Features
+description: Comprehensive overview of all features in Ecomdrop IA Connector
+---
+
+# Features
+
+Ecomdrop IA Connector provides a comprehensive set of features to integrate your Shopify store with Ecomdrop and Dropi platforms. This page covers all major features with examples and use cases.
+
+## Product Management
+
+### Import Products from Dropi
+
+Browse and import products from Dropi's extensive catalog directly into your Shopify store.
+
+<Info>
+  The product import feature supports both **favorite products** and **private products** from your Dropi account.
+</Info>
+
+**Key Capabilities:**
+
+- **Search Products**: Search by product ID, name, or SKU
+- **Pagination**: Browse through products with efficient pagination (10 products per page)
+- **Filters**: Toggle between favorite products and private products
+- **Product Preview**: View product images, prices, stock levels, and warehouse information
+
+```typescript
+// Example: Fetching Dropi products with filters
+const params = new URLSearchParams();
+params.append("pageSize", "10");
+params.append("startData", "0");
+params.append("favorite", "true"); // or "privated_product": "true"
+
+const response = await fetch(`/api/dropi/products?${params}`);
+const data = await response.json();
+```
+
+### Product Association
+
+Link Dropi products with existing Shopify products to enable automatic order processing.
+
+<CardGroup cols={2}>
+  <Card title="Variant Mapping" icon="link">
+    Map Dropi product variations to Shopify variants for accurate inventory tracking
+  </Card>
+  <Card title="Sync Options" icon="gear">
+    Choose what to sync: name, description, images, barcodes, and pricing
+  </Card>
+</CardGroup>
+
+**Sync Configuration Options:**
+
+| Option | Description | Database Field |
+|--------|-------------|----------------|
+| Save Dropi Name | Import product name from Dropi | `saveDropiName` |
+| Save Dropi Description | Import product description | `saveDropiDescription` |
+| Use Suggested Barcode | Use Dropi's suggested barcode | `useSuggestedBarcode` |
+| Save Dropi Images | Import product images | `saveDropiImages` |
+
+### Synchronized Products View
+
+Manage all your synchronized products from a dedicated interface:
+
+- View Dropi product ID and name
+- View corresponding Shopify product ID and title
+- Delete associations when needed
+- Track sync history with creation and update timestamps
+
+<Warning>
+  Deleting a product association does **not** delete the product from Shopify or Dropi. It only removes the link between them.
+</Warning>
+
+## Ecomdrop Integration
+
+### API Key Configuration
+
+Connect your Ecomdrop account by configuring your API key securely.
+
+```typescript
+// API key is stored encrypted per store
+const configuration = await db.shopConfiguration.upsert({
+  where: { shop: session.shop },
+  create: {
+    shop: session.shop,
+    ecomdropApiKey: apiKey,
+  },
+  update: {
+    ecomdropApiKey: apiKey,
+  },
+});
+```
+
+<Note>
+  Your API key is stored securely and encrypted by store. Each Shopify store has its own isolated configuration.
+</Note>
+
+### Flow Configuration
+
+Select which Ecomdrop flows to trigger for specific Shopify events:
+
+<Accordion title="New Order Flow">
+  Automatically triggered when a customer completes a purchase on your Shopify store.
+  
+  **Use Cases:**
+  - Send order confirmation messages
+  - Update customer relationship management (CRM)
+  - Trigger fulfillment workflows
+  - Send tracking information
+</Accordion>
+
+<Accordion title="Abandoned Cart Flow">
+  Triggered when a customer adds items to cart but doesn't complete the purchase.
+  
+  **Use Cases:**
+  - Send cart recovery messages
+  - Offer special discounts to encourage completion
+  - Follow up with personalized recommendations
+  - A/B test different recovery strategies
+</Accordion>
+
+### Flow Triggering
+
+Flows are automatically triggered via Shopify webhooks:
+
+```typescript
+// Example: Triggering a flow when an order is created
+export async function action({ request }: ActionFunctionArgs) {
+  const { topic, shop, session } = await authenticate.webhook(request);
+  
+  if (topic === "ORDERS_CREATE") {
+    const config = await db.shopConfiguration.findUnique({
+      where: { shop }
+    });
+    
+    if (config?.nuevoPedidoFlowId) {
+      await triggerEcomdropFlow(
+        config.ecomdropApiKey,
+        config.nuevoPedidoFlowId,
+        orderData
+      );
+    }
+  }
+}
+```
+
+## Dropi Integration
+
+### Store Configuration
+
+Configure your Dropi integration with three required fields:
+
+1. **Store Name**: Your Dropi store identifier
+2. **Country**: Operating country (supports CO, EC, CL, GT, MX, PA, PE, PY)
+3. **Token**: Your secure Dropi API token
+
+<Info>
+  The Dropi token is validated with Ecomdrop's bot field API to ensure proper integration.
+</Info>
+
+### Country-Specific Bot Fields
+
+Each country has a specific bot field ID for integration:
+
+```typescript
+const DROPI_COUNTRY_FIELD_MAP: Record<string, string> = {
+  'CO': '640597',  // Colombia
+  'EC': '805359',  // Ecuador
+  'CL': '665134',  // Chile
+  'GT': '747995',  // Guatemala
+  'MX': '641097',  // México
+  'PA': '742965',  // Panamá
+  'PE': '142979',  // Perú
+  'PY': '240677',  // Paraguay
+};
+```
+
+### Product Data Structure
+
+Dropi products include rich information:
+
+- **Basic Info**: ID, SKU, name, description
+- **Pricing**: Sale price, suggested price, cost
+- **Inventory**: Stock levels across multiple warehouses
+- **Images**: Gallery with CDN-hosted images
+- **Variations**: Color, size, and other options
+- **Categories**: Product categorization
+- **Warehouse**: Associated warehouse information
+
+## AI Assistant Configuration
+
+### Basic Information
+
+Customize your AI assistant's identity:
+
+<CardGroup cols={2}>
+  <Card title="Agent Name" icon="user">
+    Give your AI assistant a friendly name (e.g., "Andrés", "Sofia")
+  </Card>
+  <Card title="Company Name" icon="building">
+    Your business name that the AI will represent
+  </Card>
+  <Card title="Company Description" icon="file-lines">
+    Detailed description of what your business does
+  </Card>
+  <Card title="Company Policies" icon="scale-balanced">
+    Return policies, shipping policies, and terms of service
+  </Card>
+</CardGroup>
+
+### Payment Methods
+
+Configure accepted payment methods with enable/disable toggles:
+
+```typescript
+interface PaymentMethod {
+  id: string;
+  name: string;      // e.g., "Credit Card", "PayPal"
+  enabled: boolean;  // Whether this method is currently active
+}
+```
+
+<Tip>
+  You can temporarily disable payment methods without deleting them. This is useful during maintenance or when testing new payment gateways.
+</Tip>
+
+### Frequently Asked Questions (FAQs)
+
+Create two types of FAQs:
+
+**Pre-Sale FAQs**: Questions customers ask before purchasing
+- Product information
+- Shipping costs and times
+- Payment options
+- Return policies
+
+**Post-Sale FAQs**: Questions customers ask after purchasing
+- Order tracking
+- Returns and exchanges
+- Warranty claims
+- Product support
+
+```typescript
+interface FAQ {
+  id: string;
+  question: string;  // The customer's question
+  answer: string;    // The AI's response
+}
+```
+
+### Business Rules
+
+Define rules that guide the AI's behavior:
+
+- When to escalate to a human agent
+- How to handle special requests
+- Discount authorization limits
+- Product recommendations criteria
+
+```typescript
+interface Rule {
+  id: string;
+  text: string;  // Rule description
+}
+```
+
+### Notification Settings
+
+Configure notifications for different event types:
+
+<AccordionGroup>
+  <Accordion title="Notification Types">
+    - **Cancelación**: Order cancellations
+    - **Confirmación de Compra**: Purchase confirmations
+    - **Cambio de Datos**: Customer data changes
+    - **Otra Compra**: Repeat purchases
+    - **Solicitud de Asesor**: Agent request
+    - **Comprobante de Pago**: Payment receipts
+    - **Garantía**: Warranty claims
+    - **Error Open AI**: AI system errors
+  </Accordion>
+</AccordionGroup>
+
+Each notification can have:
+- Type (from predefined list)
+- Phone number (with country code)
+- Contact name
+
+```typescript
+interface Notification {
+  id: string;
+  type: string;      // Notification type
+  country: string;   // Country code (CO, MX, etc.)
+  phone: string;     // Phone number with country code
+  name: string;      // Contact person name
+}
+```
+
+<Warning>
+  Each notification type can only be configured once. The system prevents duplicate notification types.
+</Warning>
+
+## Theme Management
+
+Install and manage Shopify themes from Git repositories.
+
+### Supported Git Providers
+
+- GitHub
+- GitLab
+- Bitbucket
+
+### Theme Installation
+
+Themes are installed programmatically using the Shopify Admin API:
+
+1. Clone theme from Git repository
+2. Package theme files
+3. Upload to Shopify
+4. Optionally publish theme
+
+```typescript
+// Theme configuration via environment variables
+const themeConfig = {
+  repo: process.env.THEME_2_5_GIT_REPO,
+  branch: process.env.THEME_2_5_GIT_BRANCH,
+  provider: process.env.THEME_2_5_GIT_PROVIDER,
+  token: process.env.THEME_2_5_GIT_TOKEN,
+};
+```
+
+## Order Processing
+
+### Webhook Handlers
+
+The app registers webhooks for:
+
+- `orders/create` - New order created
+- `draft_orders/create` - Draft order created
+- `app/uninstalled` - App uninstalled (cleanup)
+- `app/scopes_update` - Permission scopes updated
+
+### Order Flow
+
+When an order is created:
+
+<Steps>
+  <Step title="Webhook Received">
+    Shopify sends order data to the app via webhook
+  </Step>
+  <Step title="Database Lookup">
+    App retrieves store configuration and product associations
+  </Step>
+  <Step title="Flow Trigger">
+    If configured, trigger the "New Order" flow in Ecomdrop
+  </Step>
+  <Step title="Dropi Processing">
+    If product is linked to Dropi, send order to Dropi for fulfillment
+  </Step>
+</Steps>
+
+## Status Dashboard
+
+Monitor all your integrations from a unified dashboard:
+
+### Configuration Status
+
+<CardGroup cols={2}>
+  <Card title="Ecomdrop Status" icon="check-circle">
+    Shows if API key is configured and when last updated
+  </Card>
+  <Card title="Dropi Status" icon="check-circle">
+    Displays store name, country, and token status
+  </Card>
+  <Card title="Active Flows" icon="bolt">
+    Lists which flows are configured for each event type
+  </Card>
+  <Card title="Next Steps" icon="list-check">
+    Provides guidance on what to configure next
+  </Card>
+</CardGroup>
+
+### Visual Indicators
+
+- **Green**: Configuration complete and active
+- **Gray**: Not yet configured
+- **Amber**: Requires attention or update
+
+## Database Models
+
+All data is stored in a MySQL database using Prisma ORM:
+
+### Session
+
+Stores Shopify app sessions and authentication tokens.
+
+### ShopConfiguration
+
+Stores integration settings:
+- Ecomdrop API key
+- Flow IDs for new orders and abandoned carts
+- Dropi store name, country, and token
+
+### ProductAssociation
+
+Links Dropi products with Shopify products:
+- Product IDs and names from both platforms
+- Import type and variant mappings
+- Sync configuration options
+
+### AIConfiguration
+
+Stores AI assistant settings:
+- Agent and company information
+- Payment methods (JSON)
+- FAQs (JSON)
+- Business rules (JSON)
+- Notification settings (JSON)
+
+<Note>
+  All configurations are isolated per Shopify store, ensuring multi-tenant security.
+</Note>
+
+## API Endpoints
+
+The app provides several API endpoints:
+
+| Endpoint | Method | Purpose |
+|----------|--------|----------|
+| `/api/dropi/products` | GET | Fetch Dropi products with filters |
+| `/api/shopify/products` | GET | Fetch Shopify products |
+| `/api/shopify/product/variants` | GET | Fetch variants for a product |
+| `/api/products/import` | POST | Import/link Dropi product to Shopify |
+| `/api/products/association/delete` | POST | Delete product association |
+| `/api/integrations/dropi/save` | POST | Save Dropi configuration |
+| `/api/theme/install` | POST | Install theme from Git |
+| `/api/ecomdrop/callback` | POST | Handle Ecomdrop callbacks |
+
+## Security Features
+
+<CardGroup cols={2}>
+  <Card title="Encrypted Storage" icon="lock">
+    API keys and tokens are stored encrypted in the database
+  </Card>
+  <Card title="Session Management" icon="key">
+    Shopify session storage with automatic token refresh
+  </Card>
+  <Card title="HMAC Verification" icon="shield-check">
+    All webhook requests are verified using HMAC signatures
+  </Card>
+  <Card title="Scoped Access" icon="user-lock">
+    App only requests necessary Shopify permissions
+  </Card>
+</CardGroup>
+
+## Caching Strategy
+
+The app implements intelligent caching:
+
+```typescript
+// Flow cache to prevent rate limiting
+const flowsCache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_DURATION = 60000; // 1 minute
+
+if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+  return cached.data; // Return cached data
+}
+```
+
+<Tip>
+  Cache is automatically cleared when you sync flows to ensure fresh data.
+</Tip>
+
+## User Interface
+
+Built with modern, responsive components:
+
+- **shadcn/ui** components for consistent design
+- **Tailwind CSS** for utility-first styling
+- **Lucide React** icons for visual clarity
+- **React Phone Number Input** for international phone support
+- **Responsive design** that works on all devices
+
+### Component Library
+
+Available UI components:
+- Button (multiple variants and sizes)
+- Card (container for content sections)
+- Dialog (modal dialogs)
+- Input (form inputs with validation)
+- Select (dropdown selections)
+- Badge (status indicators)
+- Separator (visual dividers)
+- Textarea (multi-line text input)
+
+<CardGroup cols={3}>
+  <Card title="View Documentation" icon="book" href="/api-reference">
+    Explore the API reference
+  </Card>
+  <Card title="See Architecture" icon="diagram-project" href="/architecture">
+    Understand system design
+  </Card>
+  <Card title="Get Started" icon="rocket" href="/quickstart">
+    Start building
+  </Card>
+</CardGroup>

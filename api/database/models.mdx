@@ -1,0 +1,755 @@
+---
+title: 'Prisma Models'
+description: 'Detailed documentation of all Prisma models in the Ecomdrop IA Connector'
+---
+
+## Overview
+
+This page provides detailed documentation for each Prisma model, including field descriptions, constraints, relationships, and usage examples.
+
+<Info>
+  All models are defined in `/prisma/schema.prisma` and managed through Prisma ORM for type-safe database access.
+</Info>
+
+## Session Model
+
+Manages Shopify OAuth sessions for authenticated store connections. Supports both online (user-specific) and offline (app-level) access tokens.
+
+### Schema Definition
+
+```prisma
+model Session {
+  id            String    @id
+  shop          String    @db.VarChar(255)
+  state         String    @db.VarChar(255)
+  isOnline      Boolean   @default(false)
+  scope         String?   @db.Text
+  expires       DateTime?
+  accessToken   String    @db.Text
+  userId        BigInt?
+  firstName     String?   @db.VarChar(255)
+  lastName      String?   @db.VarChar(255)
+  email         String?   @db.VarChar(255)
+  accountOwner  Boolean   @default(false)
+  locale        String?   @db.VarChar(10)
+  collaborator  Boolean?
+  emailVerified Boolean?
+
+  @@index([shop])
+}
+```
+
+### Field Descriptions
+
+<ParamField path="id" type="String" required>
+  **Primary Key** - Unique session identifier generated during OAuth flow.
+  
+  Format: Combination of shop domain and session type (online/offline).
+</ParamField>
+
+<ParamField path="shop" type="String" required>
+  **Shop Domain** - The myshopify.com domain of the connected store.
+  
+  - Max length: 255 characters
+  - Indexed for fast lookups
+  - Example: `"example-store.myshopify.com"`
+</ParamField>
+
+<ParamField path="state" type="String" required>
+  **OAuth State** - Security token used during OAuth flow to prevent CSRF attacks.
+  
+  - Max length: 255 characters
+  - Validated during callback
+</ParamField>
+
+<ParamField path="isOnline" type="Boolean" default="false">
+  **Session Type** - Determines if this is a user-specific (online) or app-level (offline) session.
+  
+  - `true`: Online session (expires, user-specific)
+  - `false`: Offline session (permanent, app-level access)
+</ParamField>
+
+<ParamField path="scope" type="String?">
+  **OAuth Scopes** - Comma-separated list of Shopify API permissions granted.
+  
+  - Stored as TEXT field
+  - Example: `"read_products,write_products,read_orders"`
+</ParamField>
+
+<ParamField path="expires" type="DateTime?">
+  **Expiration Time** - When the session expires (online sessions only).
+  
+  - Null for offline sessions
+  - Used to determine if re-authentication is needed
+</ParamField>
+
+<ParamField path="accessToken" type="String" required>
+  **Access Token** - Shopify API access token for making authenticated requests.
+  
+  - Stored as TEXT (encrypted in production)
+  - Required for all Shopify API calls
+</ParamField>
+
+<ParamField path="userId" type="BigInt?">
+  **User ID** - Shopify user ID for online sessions.
+  
+  - Null for offline sessions
+  - Links session to specific Shopify admin user
+</ParamField>
+
+<ParamField path="firstName" type="String?">
+  User's first name from Shopify account (max 255 chars).
+</ParamField>
+
+<ParamField path="lastName" type="String?">
+  User's last name from Shopify account (max 255 chars).
+</ParamField>
+
+<ParamField path="email" type="String?">
+  User's email address from Shopify account (max 255 chars).
+</ParamField>
+
+<ParamField path="accountOwner" type="Boolean" default="false">
+  **Owner Status** - Indicates if the user is the shop owner.
+  
+  - Used for permission checks
+  - Only shop owners can access certain features
+</ParamField>
+
+<ParamField path="locale" type="String?">
+  **User Locale** - Language/region preference (max 10 chars).
+  
+  - Example: `"en-US"`, `"es-MX"`
+  - Used for localization
+</ParamField>
+
+<ParamField path="collaborator" type="Boolean?">
+  Indicates if the user is a collaborator (staff member).
+</ParamField>
+
+<ParamField path="emailVerified" type="Boolean?">
+  Whether the user's email has been verified by Shopify.
+</ParamField>
+
+### Usage Examples
+
+<CodeGroup>
+```typescript Find Session by Shop
+import { prisma } from './db.server';
+
+const session = await prisma.session.findFirst({
+  where: {
+    shop: 'example-store.myshopify.com',
+    isOnline: false, // Get offline session
+  },
+});
+```
+
+```typescript Create New Session
+const session = await prisma.session.create({
+  data: {
+    id: `offline_${shop}`,
+    shop,
+    state,
+    isOnline: false,
+    scope: 'read_products,write_products',
+    accessToken: token,
+    accountOwner: true,
+  },
+});
+```
+
+```typescript Check Session Expiration
+const session = await prisma.session.findUnique({
+  where: { id: sessionId },
+});
+
+if (session?.isOnline && session.expires) {
+  const isExpired = new Date() > session.expires;
+  if (isExpired) {
+    // Re-authenticate required
+  }
+}
+```
+</CodeGroup>
+
+---
+
+## ShopConfiguration Model
+
+Stores platform-specific configuration and API credentials for Ecomdrop and Dropi integrations.
+
+### Schema Definition
+
+```prisma
+model ShopConfiguration {
+  id                      String   @id @default(uuid())
+  shop                    String   @unique @db.VarChar(255)
+  ecomdropApiKey          String?  @db.Text
+  nuevoPedidoFlowId       String?  @db.VarChar(255)
+  carritoAbandonadoFlowId String?  @db.VarChar(255)
+  dropiStoreName          String?  @db.VarChar(255)
+  dropiCountry            String?  @db.VarChar(10)
+  dropiToken              String?  @db.Text
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@index([shop])
+}
+```
+
+### Field Descriptions
+
+<ParamField path="id" type="String" required>
+  **Primary Key** - Auto-generated UUID.
+  
+  Format: Standard UUID v4
+</ParamField>
+
+<ParamField path="shop" type="String" required>
+  **Shop Domain** - Unique shop identifier.
+  
+  - Max length: 255 characters
+  - Unique constraint ensures one config per shop
+  - Example: `"example-store.myshopify.com"`
+</ParamField>
+
+<ParamField path="ecomdropApiKey" type="String?">
+  **Ecomdrop API Key** - Authentication key for Ecomdrop platform.
+  
+  - Stored as TEXT (encrypted recommended)
+  - Required for flow automation features
+  - Obtained from Ecomdrop dashboard
+</ParamField>
+
+<ParamField path="nuevoPedidoFlowId" type="String?">
+  **New Order Flow ID** - Ecomdrop flow identifier for new order automation.
+  
+  - Max length: 255 characters
+  - Triggers when new orders are created
+  - Configured in Ecomdrop platform
+</ParamField>
+
+<ParamField path="carritoAbandonadoFlowId" type="String?">
+  **Abandoned Cart Flow ID** - Ecomdrop flow identifier for cart abandonment.
+  
+  - Max length: 255 characters
+  - Triggers for abandoned cart recovery
+  - Configured in Ecomdrop platform
+</ParamField>
+
+<ParamField path="dropiStoreName" type="String?">
+  **Dropi Store Name** - Store identifier in Dropi platform.
+  
+  - Max length: 255 characters
+  - Used for product catalog access
+  - Example: `"my-dropshipping-store"`
+</ParamField>
+
+<ParamField path="dropiCountry" type="String?">
+  **Dropi Country** - Country/region for Dropi operations.
+  
+  - Max length: 10 characters
+  - ISO country code recommended
+  - Example: `"MX"`, `"US"`
+</ParamField>
+
+<ParamField path="dropiToken" type="String?">
+  **Dropi Authentication Token** - API token for Dropi platform access.
+  
+  - Stored as TEXT (encrypted recommended)
+  - Required for product imports and order fulfillment
+  - Obtained from Dropi account settings
+</ParamField>
+
+<ParamField path="createdAt" type="DateTime" default="now()">
+  **Creation Timestamp** - When the configuration was first created.
+  
+  Auto-generated on record creation.
+</ParamField>
+
+<ParamField path="updatedAt" type="DateTime">
+  **Update Timestamp** - Last modification time.
+  
+  Auto-updated on any field change.
+</ParamField>
+
+### Usage Examples
+
+<CodeGroup>
+```typescript Get Shop Configuration
+const config = await prisma.shopConfiguration.findUnique({
+  where: { shop: 'example-store.myshopify.com' },
+});
+
+if (!config?.ecomdropApiKey) {
+  // Redirect to settings page
+}
+```
+
+```typescript Create/Update Configuration
+const config = await prisma.shopConfiguration.upsert({
+  where: { shop },
+  create: {
+    shop,
+    ecomdropApiKey,
+    nuevoPedidoFlowId,
+    dropiStoreName,
+    dropiToken,
+  },
+  update: {
+    ecomdropApiKey,
+    nuevoPedidoFlowId,
+  },
+});
+```
+
+```typescript Check Integration Status
+const config = await prisma.shopConfiguration.findUnique({
+  where: { shop },
+  select: {
+    ecomdropApiKey: true,
+    dropiToken: true,
+  },
+});
+
+const integrations = {
+  ecomdrop: !!config?.ecomdropApiKey,
+  dropi: !!config?.dropiToken,
+};
+```
+</CodeGroup>
+
+<Note>
+  **Security Best Practice:** Always encrypt sensitive fields like `ecomdropApiKey` and `dropiToken` before storing in the database.
+</Note>
+
+---
+
+## ProductAssociation Model
+
+Tracks the relationship between Dropi products and imported Shopify products, including import settings and preferences.
+
+### Schema Definition
+
+```prisma
+model ProductAssociation {
+  id                    String   @id @default(uuid())
+  shop                  String   @db.VarChar(255)
+  dropiProductId        String   @db.VarChar(255)
+  shopifyProductId      String   @db.VarChar(255)
+  dropiProductName      String?  @db.VarChar(500)
+  shopifyProductTitle   String?  @db.VarChar(500)
+  importType            String   @db.VarChar(50)
+  dropiVariations       String?  @db.Text
+  saveDropiName         Boolean  @default(true)
+  saveDropiDescription  Boolean  @default(true)
+  customPrice           String?  @db.VarChar(50)
+  useSuggestedBarcode   Boolean  @default(false)
+  saveDropiImages       Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@unique([shop, dropiProductId, shopifyProductId])
+  @@index([shop])
+  @@index([dropiProductId])
+  @@index([shopifyProductId])
+}
+```
+
+### Field Descriptions
+
+<ParamField path="id" type="String" required>
+  **Primary Key** - Auto-generated UUID.
+</ParamField>
+
+<ParamField path="shop" type="String" required>
+  **Shop Domain** - The store this association belongs to.
+  
+  - Max length: 255 characters
+  - Indexed for filtering by shop
+</ParamField>
+
+<ParamField path="dropiProductId" type="String" required>
+  **Dropi Product ID** - Unique identifier from Dropi catalog.
+  
+  - Max length: 255 characters
+  - Indexed for reverse lookups
+  - Part of composite unique constraint
+</ParamField>
+
+<ParamField path="shopifyProductId" type="String" required>
+  **Shopify Product ID** - GraphQL GID of the imported product.
+  
+  - Max length: 255 characters
+  - Format: `"gid://shopify/Product/123456789"`
+  - Indexed for product updates
+  - Part of composite unique constraint
+</ParamField>
+
+<ParamField path="dropiProductName" type="String?">
+  **Original Dropi Name** - Product name from Dropi catalog.
+  
+  - Max length: 500 characters
+  - Stored for reference and sync
+</ParamField>
+
+<ParamField path="shopifyProductTitle" type="String?">
+  **Shopify Title** - Current product title in Shopify.
+  
+  - Max length: 500 characters
+  - May differ from Dropi name if customized
+</ParamField>
+
+<ParamField path="importType" type="String" required>
+  **Import Type** - Method used to import the product.
+  
+  - Max length: 50 characters
+  - Values: `"single"`, `"bulk"`, `"auto"`
+  - Used for tracking and analytics
+</ParamField>
+
+<ParamField path="dropiVariations" type="String?">
+  **Variant Mappings** - JSON data mapping Dropi variants to Shopify variants.
+  
+  - Stored as TEXT
+  - Format: JSON string with variant IDs and SKUs
+  - Used for order fulfillment routing
+</ParamField>
+
+<ParamField path="saveDropiName" type="Boolean" default="true">
+  **Save Name Preference** - Whether to use Dropi's product name.
+  
+  - `true`: Use Dropi name
+  - `false`: Use custom name
+</ParamField>
+
+<ParamField path="saveDropiDescription" type="Boolean" default="true">
+  **Save Description Preference** - Whether to use Dropi's description.
+  
+  - `true`: Import Dropi description
+  - `false`: Use custom description
+</ParamField>
+
+<ParamField path="customPrice" type="String?">
+  **Custom Pricing** - Custom price override or markup formula.
+  
+  - Max length: 50 characters
+  - Examples: `"29.99"`, `"cost*1.5"`, `"+10"`
+</ParamField>
+
+<ParamField path="useSuggestedBarcode" type="Boolean" default="false">
+  **Barcode Preference** - Whether to use Dropi's suggested barcode.
+  
+  - `true`: Use Dropi barcode
+  - `false`: Generate or use custom barcode
+</ParamField>
+
+<ParamField path="saveDropiImages" type="Boolean" default="true">
+  **Image Import Preference** - Whether to import product images from Dropi.
+  
+  - `true`: Import Dropi images
+  - `false`: Use custom images
+</ParamField>
+
+<ParamField path="createdAt" type="DateTime" default="now()">
+  **Import Timestamp** - When the product was first associated.
+</ParamField>
+
+<ParamField path="updatedAt" type="DateTime">
+  **Last Sync Time** - Last time the association was updated.
+</ParamField>
+
+### Usage Examples
+
+<CodeGroup>
+```typescript Create Product Association
+const association = await prisma.productAssociation.create({
+  data: {
+    shop,
+    dropiProductId: 'DROPI-12345',
+    shopifyProductId: 'gid://shopify/Product/987654321',
+    dropiProductName: 'Premium Wireless Earbuds',
+    shopifyProductTitle: 'Premium Wireless Earbuds',
+    importType: 'single',
+    dropiVariations: JSON.stringify({
+      variants: [
+        { dropiId: 'VAR-1', shopifyId: 'gid://shopify/ProductVariant/111' },
+        { dropiId: 'VAR-2', shopifyId: 'gid://shopify/ProductVariant/222' },
+      ],
+    }),
+    saveDropiName: true,
+    saveDropiDescription: true,
+    customPrice: '49.99',
+    useSuggestedBarcode: false,
+    saveDropiImages: true,
+  },
+});
+```
+
+```typescript Find Association by Dropi Product
+const associations = await prisma.productAssociation.findMany({
+  where: {
+    shop,
+    dropiProductId: 'DROPI-12345',
+  },
+});
+```
+
+```typescript Get All Imported Products for Shop
+const importedProducts = await prisma.productAssociation.findMany({
+  where: { shop },
+  orderBy: { createdAt: 'desc' },
+  select: {
+    dropiProductId: true,
+    shopifyProductId: true,
+    dropiProductName: true,
+    importType: true,
+    createdAt: true,
+  },
+});
+```
+
+```typescript Update Product Preferences
+await prisma.productAssociation.update({
+  where: {
+    shop_dropiProductId_shopifyProductId: {
+      shop,
+      dropiProductId,
+      shopifyProductId,
+    },
+  },
+  data: {
+    saveDropiName: false,
+    customPrice: '59.99',
+  },
+});
+```
+</CodeGroup>
+
+<Note>
+  The composite unique constraint `[shop, dropiProductId, shopifyProductId]` ensures that each Dropi product can only be associated with a specific Shopify product once per shop.
+</Note>
+
+---
+
+## AIConfiguration Model
+
+Stores AI agent configuration, knowledge base, and behavioral rules for personalized customer support.
+
+### Schema Definition
+
+```prisma
+model AIConfiguration {
+  id                      String   @id @default(uuid())
+  shop                    String   @unique @db.VarChar(255)
+  agentName               String?  @db.VarChar(255)
+  companyName             String?  @db.VarChar(255)
+  companyDescription      String?  @db.Text
+  paymentMethods          String?  @db.Text
+  companyPolicies         String?  @db.Text
+  faq                     String?  @db.Text
+  postSaleFaq             String?  @db.Text
+  rules                   String?  @db.Text
+  notifications           String?  @db.Text
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@index([shop])
+}
+```
+
+### Field Descriptions
+
+<ParamField path="id" type="String" required>
+  **Primary Key** - Auto-generated UUID.
+</ParamField>
+
+<ParamField path="shop" type="String" required>
+  **Shop Domain** - Unique shop identifier.
+  
+  - Max length: 255 characters
+  - Unique constraint ensures one AI config per shop
+</ParamField>
+
+<ParamField path="agentName" type="String?">
+  **AI Agent Name** - Custom name for the chatbot/assistant.
+  
+  - Max length: 255 characters
+  - Example: `"Sofia"`, `"Support Assistant"`
+  - Displayed to customers during interactions
+</ParamField>
+
+<ParamField path="companyName" type="String?">
+  **Company Name** - Store or business name.
+  
+  - Max length: 255 characters
+  - Used in AI responses for personalization
+  - Example: `"TechGadgets Store"`
+</ParamField>
+
+<ParamField path="companyDescription" type="String?">
+  **Business Description** - Overview of the business and offerings.
+  
+  - Stored as TEXT (no length limit)
+  - Provides context for AI responses
+  - Includes mission, values, product categories
+</ParamField>
+
+<ParamField path="paymentMethods" type="String?">
+  **Payment Methods** - Accepted payment options.
+  
+  - Stored as TEXT
+  - Format: Free-form or structured (JSON)
+  - Example: `"Credit cards, PayPal, Mercado Pago, OXXO"`
+</ParamField>
+
+<ParamField path="companyPolicies" type="String?">
+  **Store Policies** - Return, shipping, and general policies.
+  
+  - Stored as TEXT
+  - Includes return windows, shipping times, warranty info
+  - Used by AI to answer policy questions
+</ParamField>
+
+<ParamField path="faq" type="String?">
+  **Pre-Sale FAQ** - Common questions before purchase.
+  
+  - Stored as TEXT
+  - Format: Question-answer pairs
+  - Topics: Product info, sizing, availability
+</ParamField>
+
+<ParamField path="postSaleFaq" type="String?">
+  **Post-Sale FAQ** - Questions about orders and support.
+  
+  - Stored as TEXT
+  - Topics: Order tracking, returns, exchanges
+  - Used for customer support automation
+</ParamField>
+
+<ParamField path="rules" type="String?">
+  **AI Behavior Rules** - Guidelines for AI agent behavior.
+  
+  - Stored as TEXT
+  - Example: `"Always be friendly and professional"`
+  - Defines tone, escalation triggers, boundaries
+</ParamField>
+
+<ParamField path="notifications" type="String?">
+  **Notification Settings** - Configuration for alerts and notifications.
+  
+  - Stored as TEXT
+  - Format: JSON recommended
+  - Controls when/how to notify store owners
+</ParamField>
+
+<ParamField path="createdAt" type="DateTime" default="now()">
+  **Configuration Created** - Initial setup timestamp.
+</ParamField>
+
+<ParamField path="updatedAt" type="DateTime">
+  **Last Modified** - Last time the configuration was updated.
+</ParamField>
+
+### Usage Examples
+
+<CodeGroup>
+```typescript Get AI Configuration
+const aiConfig = await prisma.aIConfiguration.findUnique({
+  where: { shop: 'example-store.myshopify.com' },
+});
+
+if (!aiConfig) {
+  // Show setup wizard
+}
+```
+
+```typescript Create AI Configuration
+const config = await prisma.aIConfiguration.create({
+  data: {
+    shop,
+    agentName: 'Sofia',
+    companyName: 'Mi Tienda Online',
+    companyDescription: 'Vendemos productos de tecnología y gadgets innovadores.',
+    paymentMethods: 'Aceptamos tarjetas de crédito, PayPal, y Mercado Pago',
+    companyPolicies: 'Devoluciones: 30 días. Envío gratis en compras mayores a $500.',
+    faq: JSON.stringify([
+      { q: '¿Cuánto tarda el envío?', a: 'Entre 3-5 días hábiles' },
+      { q: '¿Tienen garantía?', a: 'Sí, 1 año de garantía en todos los productos' },
+    ]),
+    rules: 'Siempre ser amable y profesional. Escalar a humano si el cliente está molesto.',
+  },
+});
+```
+
+```typescript Update AI Knowledge Base
+await prisma.aIConfiguration.update({
+  where: { shop },
+  data: {
+    faq: JSON.stringify(updatedFaqList),
+    companyPolicies: newPoliciesText,
+  },
+});
+```
+
+```typescript Check AI Setup Status
+const config = await prisma.aIConfiguration.findUnique({
+  where: { shop },
+  select: {
+    agentName: true,
+    companyDescription: true,
+    faq: true,
+    rules: true,
+  },
+});
+
+const isConfigured = !!(config?.agentName && config?.companyDescription);
+```
+</CodeGroup>
+
+<Info>
+  **Best Practice:** Store FAQ data as JSON for easier parsing and updating. This allows structured querying and better AI context management.
+</Info>
+
+## Common Patterns
+
+### Multi-Shop Support
+
+All models use `shop` as a key field for multi-tenancy:
+
+```typescript
+// Always scope queries by shop
+const data = await prisma.model.findMany({
+  where: { shop },
+});
+```
+
+### Timestamps
+
+Models with `createdAt` and `updatedAt` provide automatic timestamp tracking:
+
+```typescript
+// updatedAt is automatically updated
+await prisma.model.update({
+  where: { id },
+  data: { field: newValue },
+  // updatedAt will be set to now()
+});
+```
+
+### Upsert Operations
+
+Use upsert for create-or-update logic:
+
+```typescript
+const config = await prisma.shopConfiguration.upsert({
+  where: { shop },
+  create: { shop, /* initial data */ },
+  update: { /* updated fields */ },
+});
+```
+
+## Related Documentation
+
+- [Database Schema](/api/database/schema) - Schema overview and ER diagram

@@ -1,0 +1,279 @@
+---
+title: "Integrations API"
+description: "API endpoints for managing Dropi and Ecomdrop integrations"
+---
+
+The Integrations API provides endpoints for configuring and managing external platform integrations.
+
+## Save Dropi Integration
+
+Saves or updates Dropi integration settings for the shop.
+
+<CodeGroup>
+```http POST
+POST /api/integrations/dropi/save
+```
+</CodeGroup>
+
+### Request Body (Form Data)
+
+<ParamField body="store_name" type="string" required>
+  Dropi store name
+</ParamField>
+
+<ParamField body="country" type="string" required>
+  Store country code (e.g., "US", "MX", "CO")
+</ParamField>
+
+<ParamField body="dropi_token" type="string">
+  Dropi integration API token (required for new configurations)
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  Whether the configuration was saved successfully
+</ResponseField>
+
+<ResponseField name="configuration" type="object">
+  Updated shop configuration
+  
+  <Expandable title="Configuration Object">
+    <ResponseField name="shop" type="string">
+      Shop domain
+    </ResponseField>
+    
+    <ResponseField name="dropiStoreName" type="string">
+      Dropi store name
+    </ResponseField>
+    
+    <ResponseField name="dropiCountry" type="string">
+      Store country
+    </ResponseField>
+    
+    <ResponseField name="dropiToken" type="string">
+      Dropi API token (partially masked)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="error" type="string">
+  Error message (if success is false)
+</ResponseField>
+
+### Example Response
+
+<CodeGroup>
+```json 200 OK
+{
+  "success": true,
+  "configuration": {
+    "shop": "mystore.myshopify.com",
+    "dropiStoreName": "My Store",
+    "dropiCountry": "US",
+    "dropiToken": "dropi_***************"
+  }
+}
+```
+
+```json 400 Bad Request
+{
+  "success": false,
+  "error": "El nombre de la tienda es requerido"
+}
+```
+
+```json 400 Bad Request
+{
+  "success": false,
+  "error": "Primero debe configurar su clave API de Ecomdrop"
+}
+```
+
+```json 400 Bad Request
+{
+  "success": false,
+  "error": "Error al validar la integración con Dropi"
+}
+```
+</CodeGroup>
+
+<Note>
+  The Dropi token is validated against the Ecomdrop API before being saved. Ecomdrop API key must be configured first.
+</Note>
+
+<Warning>
+  When updating an existing configuration, the `dropi_token` parameter is optional. If not provided, the existing token will be preserved.
+</Warning>
+
+---
+
+## Ecomdrop Callback
+
+Receives notifications from Ecomdrop when order processing is complete. This endpoint updates order tags based on the processing status.
+
+<CodeGroup>
+```http POST
+POST /api/ecomdrop/callback
+```
+</CodeGroup>
+
+### Request Body (JSON)
+
+<ParamField body="apiKey" type="string" required>
+  Ecomdrop API key for authentication (also accepts `api_key` or `token`)
+</ParamField>
+
+<ParamField body="orderName" type="string" required>
+  Shopify order name (e.g., "#1001") - primary identifier
+</ParamField>
+
+<ParamField body="orderId" type="string">
+  Shopify order ID (GraphQL format: gid://shopify/Order/123)
+</ParamField>
+
+<ParamField body="shop" type="string">
+  Shop domain (optional, determined from API key if not provided)
+</ParamField>
+
+<ParamField body="tag" type="string">
+  Single tag to add to the order
+</ParamField>
+
+<ParamField body="tags" type="string | array">
+  Multiple tags to add (string with comma separation or array)
+</ParamField>
+
+<ParamField body="status" type="string">
+  Processing status - automatically maps to tags:
+  - `success` → "ecomdrop-processed"
+  - `completed` → "ecomdrop-completed"
+  - `pending` → "ecomdrop-pending"
+  - `error` or `failed` → "ecomdrop-error"
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  Whether the callback was processed successfully
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Success message with applied tags
+</ResponseField>
+
+<ResponseField name="orderId" type="string">
+  Shopify order ID (GraphQL format)
+</ResponseField>
+
+<ResponseField name="tags" type="array">
+  Tags that were added to the order
+</ResponseField>
+
+<ResponseField name="error" type="string">
+  Error message (if success is false)
+</ResponseField>
+
+### Example Request
+
+<CodeGroup>
+```json Using orderName (recommended)
+{
+  "apiKey": "ecomdrop_api_key_here",
+  "orderName": "#1001",
+  "status": "success"
+}
+```
+
+```json Using orderId (GraphQL format)
+{
+  "apiKey": "ecomdrop_api_key_here",
+  "orderId": "gid://shopify/Order/5678901234567890",
+  "tags": ["processed", "ready-to-ship"]
+}
+```
+
+```json With custom tags
+{
+  "apiKey": "ecomdrop_api_key_here",
+  "orderName": "#1001",
+  "tag": "custom-tag"
+}
+```
+</CodeGroup>
+
+### Example Response
+
+<CodeGroup>
+```json 200 OK
+{
+  "success": true,
+  "message": "Tags added successfully: ecomdrop-processed",
+  "orderId": "gid://shopify/Order/5678901234567890",
+  "tags": ["ecomdrop-processed"]
+}
+```
+
+```json 400 Bad Request
+{
+  "success": false,
+  "error": "orderName (e.g., '#1014') or orderId is required"
+}
+```
+
+```json 401 Unauthorized
+{
+  "success": false,
+  "error": "API key is required for authentication"
+}
+```
+
+```json 401 Unauthorized
+{
+  "success": false,
+  "error": "Invalid API key"
+}
+```
+
+```json 404 Not Found
+{
+  "success": false,
+  "error": "Order #1001 not found in shop mystore.myshopify.com"
+}
+```
+
+```json 404 Not Found
+{
+  "success": false,
+  "error": "No active session found for shop. Please ensure the app is installed."
+}
+```
+
+```json 403 Forbidden
+{
+  "success": false,
+  "error": "App requires approval for protected customer data. Will work after publication.",
+  "message": "This endpoint will work once the app is published and approved by Shopify."
+}
+```
+</CodeGroup>
+
+<Note>
+  If no tags are explicitly provided, the endpoint will use a default tag based on the `status` field, or "ecomdrop-processed" if no status is provided.
+</Note>
+
+<Warning>
+  This endpoint searches for orders using Shopify's GraphQL API, which requires app approval for protected customer data. The endpoint will return a 403 error until the app is published and approved by Shopify.
+</Warning>
+
+### Tag Priority
+
+Tags are applied in the following priority order:
+
+1. Explicit `tag` or `tags` parameters
+2. Auto-mapped tags from `status` field
+3. Default tag: "ecomdrop-processed"
+
+### Authentication
+
+The endpoint authenticates requests using the `apiKey` parameter, which must match an Ecomdrop API key stored in the database. The shop is identified automatically based on the API key.

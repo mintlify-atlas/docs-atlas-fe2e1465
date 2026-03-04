@@ -1,0 +1,761 @@
+---
+title: Architecture
+description: Technical architecture, tech stack, and system design of Ecomdrop IA Connector
+---
+
+# Architecture
+
+Ecomdrop IA Connector is built with modern, production-ready technologies designed for scalability, maintainability, and performance. This page provides a comprehensive overview of the system architecture.
+
+## System Overview
+
+```mermaid
+graph TB
+    subgraph "Shopify Ecosystem"
+        Store[Shopify Store]
+        Admin[Shopify Admin]
+    end
+    
+    subgraph "Ecomdrop IA Connector"
+        App[React Router App]
+        API[API Routes]
+        DB[(MySQL Database)]
+    end
+    
+    subgraph "External Services"
+        Ecomdrop[Ecomdrop API]
+        Dropi[Dropi API]
+        Git[Git Repository]
+    end
+    
+    Store -->|Webhooks| API
+    Admin -->|Embedded| App
+    App -->|GraphQL/REST| Admin
+    API -->|Prisma| DB
+    API -->|HTTP| Ecomdrop
+    API -->|HTTP| Dropi
+    API -->|Clone| Git
+```
+
+## Tech Stack
+
+### Frontend
+
+<CardGroup cols={2}>
+  <Card title="React Router v7" icon="route">
+    Modern routing with server-side rendering, data loading, and file-based routing
+  </Card>
+  <Card title="TypeScript" icon="code">
+    Type-safe development with full IDE support and compile-time error checking
+  </Card>
+  <Card title="Tailwind CSS" icon="palette">
+    Utility-first CSS framework for rapid UI development
+  </Card>
+  <Card title="shadcn/ui" icon="sparkles">
+    High-quality React components built on Radix UI primitives
+  </Card>
+</CardGroup>
+
+**Additional Frontend Libraries:**
+
+```json
+{
+  "@shopify/app-bridge-react": "^4.2.4",
+  "lucide-react": "^0.552.0",
+  "react-phone-number-input": "^3.4.13",
+  "class-variance-authority": "^0.7.1",
+  "tailwind-merge": "^3.3.1",
+  "tailwindcss-animate": "^1.0.7"
+}
+```
+
+### Backend
+
+<CardGroup cols={2}>
+  <Card title="Node.js 20+" icon="node-js">
+    Modern JavaScript runtime with ESM support
+  </Card>
+  <Card title="React Router Server" icon="server">
+    Server-side rendering and API routes with type-safe data loading
+  </Card>
+  <Card title="Prisma ORM" icon="database">
+    Type-safe database client with migrations and schema management
+  </Card>
+  <Card title="MySQL 8.0" icon="database">
+    Production-grade relational database with ACID compliance
+  </Card>
+</CardGroup>
+
+**Backend Dependencies:**
+
+```json
+{
+  "@shopify/shopify-app-react-router": "^1.0.0",
+  "@shopify/shopify-app-session-storage-prisma": "^7.0.0",
+  "@prisma/client": "^6.16.3",
+  "mysql2": "^3.15.3"
+}
+```
+
+### DevOps
+
+<CardGroup cols={2}>
+  <Card title="Docker" icon="docker">
+    Containerization for consistent deployment across environments
+  </Card>
+  <Card title="Docker Compose" icon="layer-group">
+    Multi-container orchestration for local development and production
+  </Card>
+  <Card title="Traefik" icon="network-wired">
+    Reverse proxy and load balancer with automatic SSL
+  </Card>
+  <Card title="Portainer" icon="window-restore">
+    Container management UI for monitoring and administration
+  </Card>
+</CardGroup>
+
+## Project Structure
+
+```
+ecomdrop-ia-connector/
+├── app/
+│   ├── components/          # React components
+│   │   ├── ui/             # shadcn/ui components
+│   │   │   ├── button.tsx
+│   │   │   ├── card.tsx
+│   │   │   ├── dialog.tsx
+│   │   │   ├── input.tsx
+│   │   │   └── ...
+│   │   └── modals/         # Custom modal components
+│   │       ├── LoadingModal.tsx
+│   │       └── SuccessModal.tsx
+│   ├── lib/                # Utility functions and API clients
+│   │   ├── utils.ts
+│   │   ├── ecomdrop.api.server.ts
+│   │   └── shopify.order.server.ts
+│   ├── routes/             # React Router routes
+│   │   ├── app._index.tsx         # Products page
+│   │   ├── app.configuration.tsx  # Configuration page
+│   │   ├── app.configuration.ai.tsx  # AI config page
+│   │   ├── app.orders.tsx         # Orders page
+│   │   ├── app.theme.tsx          # Theme management
+│   │   ├── api.*.tsx              # API endpoints
+│   │   └── webhooks.*.tsx         # Webhook handlers
+│   ├── shopify.server.ts   # Shopify authentication
+│   ├── db.server.ts        # Database connection
+│   └── globals.d.ts        # TypeScript declarations
+├── prisma/
+│   ├── schema.prisma       # Database schema (MySQL)
+│   └── migrations/         # Database migrations
+├── public/                 # Static assets
+├── Dockerfile             # Production Docker image
+├── docker-compose.yml     # Docker Compose configuration
+├── package.json           # Dependencies and scripts
+├── tsconfig.json          # TypeScript configuration
+├── tailwind.config.js     # Tailwind CSS configuration
+└── vite.config.ts         # Vite bundler configuration
+```
+
+## Database Schema
+
+The application uses **Prisma ORM** with **MySQL 8.0** for data persistence.
+
+### Schema Overview
+
+```prisma
+// Shopify app sessions and authentication
+model Session {
+  id            String    @id
+  shop          String    @db.VarChar(255)
+  state         String    @db.VarChar(255)
+  isOnline      Boolean   @default(false)
+  scope         String?   @db.Text
+  expires       DateTime?
+  accessToken   String    @db.Text
+  userId        BigInt?
+  // ... additional fields
+}
+
+// Store-specific integration settings
+model ShopConfiguration {
+  id                      String   @id @default(uuid())
+  shop                    String   @unique @db.VarChar(255)
+  ecomdropApiKey          String?  @db.Text
+  nuevoPedidoFlowId       String?  @db.VarChar(255)
+  carritoAbandonadoFlowId String?  @db.VarChar(255)
+  dropiStoreName          String?  @db.VarChar(255)
+  dropiCountry            String?  @db.VarChar(10)
+  dropiToken              String?  @db.Text
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+// Product mappings between platforms
+model ProductAssociation {
+  id                    String   @id @default(uuid())
+  shop                  String   @db.VarChar(255)
+  dropiProductId        String   @db.VarChar(255)
+  shopifyProductId      String   @db.VarChar(255)
+  dropiProductName      String?  @db.VarChar(500)
+  shopifyProductTitle   String?  @db.VarChar(500)
+  importType            String   @db.VarChar(50)
+  dropiVariations       String?  @db.Text
+  saveDropiName         Boolean  @default(true)
+  saveDropiDescription  Boolean  @default(true)
+  customPrice           String?  @db.VarChar(50)
+  useSuggestedBarcode   Boolean  @default(false)
+  saveDropiImages       Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+// AI assistant configuration per store
+model AIConfiguration {
+  id                      String   @id @default(uuid())
+  shop                    String   @unique @db.VarChar(255)
+  agentName               String?  @db.VarChar(255)
+  companyName             String?  @db.VarChar(255)
+  companyDescription      String?  @db.Text
+  paymentMethods          String?  @db.Text  // JSON
+  companyPolicies         String?  @db.Text
+  faq                     String?  @db.Text  // JSON
+  postSaleFaq             String?  @db.Text  // JSON
+  rules                   String?  @db.Text  // JSON
+  notifications           String?  @db.Text  // JSON
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+```
+
+<Info>
+  All configurations are **isolated per Shopify store** using the `shop` field, ensuring multi-tenant security.
+</Info>
+
+### Database Features
+
+- **Indexes** on frequently queried fields (`shop`, `dropiProductId`, `shopifyProductId`)
+- **Unique constraints** to prevent duplicate associations
+- **Timestamps** for tracking creation and updates
+- **Text fields** for storing JSON data (payment methods, FAQs, rules, notifications)
+- **UUID primary keys** for distributed systems compatibility
+
+## Authentication Flow
+
+### Shopify OAuth
+
+```typescript
+// shopify.server.ts
+import { shopifyApp } from "@shopify/shopify-app-react-router/server";
+import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
+
+const shopify = shopifyApp({
+  apiKey: process.env.SHOPIFY_API_KEY,
+  apiSecretKey: process.env.SHOPIFY_API_SECRET,
+  apiVersion: ApiVersion.October25,
+  scopes: process.env.SCOPES?.split(","),
+  appUrl: process.env.SHOPIFY_APP_URL,
+  authPathPrefix: "/auth",
+  sessionStorage: new PrismaSessionStorage(prisma),
+  distribution: AppDistribution.AppStore,
+});
+```
+
+### Authentication Steps
+
+<Steps>
+  <Step title="OAuth Initiation">
+    User installs app from Shopify App Store or clicks "Add app" in admin
+  </Step>
+  <Step title="Permission Request">
+    Shopify displays requested scopes: `read_products`, `write_products`, `read_orders`, `read_themes`, `write_themes`
+  </Step>
+  <Step title="Token Exchange">
+    After approval, Shopify sends authorization code, app exchanges it for access token
+  </Step>
+  <Step title="Session Storage">
+    Access token and session data stored in MySQL via Prisma
+  </Step>
+  <Step title="App Bridge Connection">
+    Embedded app connects to Shopify Admin using App Bridge
+  </Step>
+</Steps>
+
+### Protected Routes
+
+All routes are protected with authentication middleware:
+
+```typescript
+export async function loader({ request }: LoaderFunctionArgs) {
+  const { session, admin } = await authenticate.admin(request);
+  // Route logic here
+}
+```
+
+## API Integration Architecture
+
+### Ecomdrop API Client
+
+```typescript
+// app/lib/ecomdrop.api.server.ts
+const ECOMDROP_API_BASE = "https://panel.ecomdrop.app/api";
+
+export async function getEcomdropFlows(apiKey: string) {
+  const response = await fetch(`${ECOMDROP_API_BASE}/accounts/flows`, {
+    method: "GET",
+    headers: {
+      "accept": "application/json",
+      "X-ACCESS-TOKEN": apiKey,
+    },
+  });
+  return response.json();
+}
+
+export async function triggerEcomdropFlow(
+  apiKey: string,
+  flowId: string,
+  payload: any
+) {
+  const response = await fetch(
+    `${ECOMDROP_API_BASE}/flows/${flowId}/trigger`,
+    {
+      method: "POST",
+      headers: {
+        "accept": "application/json",
+        "X-ACCESS-TOKEN": apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+  return response.json();
+}
+```
+
+### Dropi API Integration
+
+Dropi integration uses Ecomdrop's bot field API:
+
+```typescript
+const DROPI_COUNTRY_FIELD_MAP: Record<string, string> = {
+  'CO': '640597',  // Colombia
+  'EC': '805359',  // Ecuador
+  'CL': '665134',  // Chile
+  'GT': '747995',  // Guatemala
+  'MX': '641097',  // México
+  'PA': '742965',  // Panamá
+  'PE': '142979',  // Perú
+  'PY': '240677',  // Paraguay
+};
+
+export async function validateAndSaveDropiIntegration(
+  apiKey: string,
+  country: string,
+  dropiToken: string
+) {
+  const fieldId = DROPI_COUNTRY_FIELD_MAP[country];
+  
+  const response = await fetch(
+    `${ECOMDROP_API_BASE}/accounts/bot_fields/${fieldId}`,
+    {
+      method: "POST",
+      headers: {
+        "accept": "application/json",
+        "X-ACCESS-TOKEN": apiKey,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({ value: dropiToken }),
+    }
+  );
+  
+  return response.json();
+}
+```
+
+### Caching Strategy
+
+Implements in-memory caching to prevent API rate limiting:
+
+```typescript
+const flowsCache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_DURATION = 60000; // 1 minute
+
+export async function getEcomdropFlows(apiKey: string) {
+  // Check cache first
+  const cached = flowsCache.get(apiKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    return { success: true, data: cached.data };
+  }
+  
+  // Fetch from API and cache result
+  const data = await fetchFromAPI();
+  flowsCache.set(apiKey, { data, timestamp: Date.now() });
+  return { success: true, data };
+}
+```
+
+## Webhook Processing
+
+### Registered Webhooks
+
+```typescript
+// Webhooks are registered automatically by Shopify App package
+const webhooks = [
+  "orders/create",
+  "draft_orders/create",
+  "app/uninstalled",
+  "app/scopes_update"
+];
+```
+
+### Webhook Handler Example
+
+```typescript
+// app/routes/webhooks.orders.create.tsx
+export async function action({ request }: ActionFunctionArgs) {
+  const { topic, shop, session } = await authenticate.webhook(request);
+  
+  // Parse webhook payload
+  const payload = await request.json();
+  
+  // Get store configuration
+  const config = await db.shopConfiguration.findUnique({
+    where: { shop }
+  });
+  
+  // Trigger Ecomdrop flow if configured
+  if (config?.nuevoPedidoFlowId && config?.ecomdropApiKey) {
+    await triggerEcomdropFlow(
+      config.ecomdropApiKey,
+      config.nuevoPedidoFlowId,
+      payload
+    );
+  }
+  
+  return json({ success: true });
+}
+```
+
+<Note>
+  All webhooks are **verified using HMAC signatures** to ensure they come from Shopify.
+</Note>
+
+## Docker Deployment
+
+### Dockerfile
+
+```dockerfile
+FROM node:20-alpine
+RUN apk add --no-cache openssl netcat-openbsd
+
+EXPOSE 3000
+WORKDIR /app
+ENV NODE_ENV=production
+
+# Install dependencies
+COPY package.json package-lock.json* ./
+RUN npm ci --omit=dev && npm cache clean --force
+
+# Copy application files
+COPY . .
+
+# Build application
+RUN npm run build
+
+# Create entrypoint script that waits for MySQL
+RUN echo '#!/bin/sh' > /app/docker-entrypoint.sh && \
+    echo 'until nc -z mysql 3306; do' >> /app/docker-entrypoint.sh && \
+    echo '  echo "Waiting for MySQL..."' >> /app/docker-entrypoint.sh && \
+    echo '  sleep 2' >> /app/docker-entrypoint.sh && \
+    echo 'done' >> /app/docker-entrypoint.sh && \
+    echo 'exec npm run docker-start' >> /app/docker-entrypoint.sh && \
+    chmod +x /app/docker-entrypoint.sh
+
+CMD ["/app/docker-entrypoint.sh"]
+```
+
+### Docker Compose Configuration
+
+```yaml
+version: "3.8"
+
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: shopify_app
+      MYSQL_USER: shopify_user
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - EcomdropNet
+    
+  shopify_app:
+    image: shopify-app_shopify_app:latest
+    environment:
+      DATABASE_URL: mysql://shopify_user:${MYSQL_PASSWORD}@mysql:3306/shopify_app
+      SHOPIFY_API_KEY: ${SHOPIFY_API_KEY}
+      SHOPIFY_API_SECRET: ${SHOPIFY_API_SECRET}
+      SHOPIFY_APP_URL: https://connector.ecomdrop.io
+      NODE_ENV: production
+    networks:
+      - EcomdropNet
+    depends_on:
+      - mysql
+    deploy:
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.shopify_app.rule=Host(`connector.ecomdrop.io`)
+        - traefik.http.routers.shopify_app.tls.certresolver=letsencryptresolver
+
+networks:
+  EcomdropNet:
+    external: true
+
+volumes:
+  mysql_data:
+```
+
+### Production Deployment Features
+
+<CardGroup cols={2}>
+  <Card title="Health Checks" icon="heart-pulse">
+    MySQL health checks ensure database is ready before app starts
+  </Card>
+  <Card title="Automatic Restart" icon="rotate">
+    Failed containers automatically restart with exponential backoff
+  </Card>
+  <Card title="SSL/TLS" icon="lock">
+    Automatic SSL certificate provisioning via Let's Encrypt
+  </Card>
+  <Card title="Load Balancing" icon="scale-balanced">
+    Traefik handles load balancing and request routing
+  </Card>
+</CardGroup>
+
+## Environment Variables
+
+### Required Variables
+
+```bash
+# Database
+DATABASE_URL="mysql://user:password@host:3306/shopify_app"
+MYSQL_ROOT_PASSWORD="secure_root_password"
+MYSQL_PASSWORD="secure_user_password"
+
+# Shopify API
+SHOPIFY_API_KEY="your_api_key"
+SHOPIFY_API_SECRET="your_api_secret"
+SHOPIFY_APP_URL="https://your-app-url.com"
+SCOPES="read_products,write_products,read_orders,read_themes,write_themes"
+```
+
+### Optional Variables
+
+```bash
+# Theme Configuration
+THEME_2_5_GIT_REPO="your-org/theme-repo"
+THEME_2_5_GIT_BRANCH="main"
+THEME_2_5_GIT_PROVIDER="github"
+THEME_2_5_GIT_TOKEN="your_github_token"
+
+# Custom Domain
+SHOP_CUSTOM_DOMAIN="your-custom-domain.com"
+```
+
+## Performance Optimizations
+
+### Server-Side Rendering
+
+React Router v7 provides automatic server-side rendering:
+
+```typescript
+// Data loaded on server before page render
+export async function loader({ request }: LoaderFunctionArgs) {
+  const { session, admin } = await authenticate.admin(request);
+  
+  const [configuration, associations] = await Promise.all([
+    db.shopConfiguration.findUnique({ where: { shop: session.shop } }),
+    db.productAssociation.findMany({ where: { shop: session.shop } })
+  ]);
+  
+  return { configuration, associations };
+}
+```
+
+### Database Optimizations
+
+- **Connection pooling** via Prisma
+- **Indexed queries** on frequently accessed fields
+- **Batch operations** for bulk updates
+- **Query optimization** with Prisma's query analyzer
+
+### Frontend Optimizations
+
+- **Code splitting** with React Router
+- **Lazy loading** of heavy components
+- **Image optimization** with CDN (Dropi images)
+- **Debounced search** to reduce API calls
+
+## Security Measures
+
+<AccordionGroup>
+  <Accordion title="Data Encryption">
+    - API keys and tokens stored as encrypted text in database
+    - HTTPS/TLS encryption for all API communications
+    - Secure session storage with encrypted cookies
+  </Accordion>
+  
+  <Accordion title="Authentication & Authorization">
+    - OAuth 2.0 for Shopify authentication
+    - HMAC verification for webhook requests
+    - Session-based authorization for API routes
+    - Scoped access tokens with minimal permissions
+  </Accordion>
+  
+  <Accordion title="Input Validation">
+    - TypeScript type checking at compile time
+    - Prisma schema validation at database level
+    - Form validation on both client and server
+    - SQL injection prevention via parameterized queries
+  </Accordion>
+  
+  <Accordion title="Multi-Tenancy">
+    - All data isolated per Shopify store
+    - Unique indexes prevent cross-store data access
+    - Session verification on every request
+  </Accordion>
+</AccordionGroup>
+
+## Monitoring & Logging
+
+The application includes comprehensive logging:
+
+```typescript
+// Structured logging for API calls
+console.log("🔍 Fetching flows from Ecomdrop API...");
+console.log("📡 API URL:", `${ECOMDROP_API_BASE}/accounts/flows`);
+console.log("📊 Response status:", response.status);
+console.log("✅ Flows received:", data);
+```
+
+### Log Categories
+
+- `🔍` API requests
+- `📦` Data operations
+- `✅` Success messages
+- `❌` Error messages
+- `⚠️` Warnings
+- `📊` Status updates
+
+## Scalability Considerations
+
+### Horizontal Scaling
+
+The app supports horizontal scaling:
+
+- **Stateless design**: No server-side state outside database
+- **Session storage in MySQL**: Shared across all app instances
+- **Load balancing**: Traefik distributes requests across replicas
+
+### Database Scaling
+
+```yaml
+# MySQL configuration for production
+command:
+  - --innodb_buffer_pool_size=768M
+  - --max_connections=200
+  - --max_allowed_packet=256M
+```
+
+### Caching Strategy
+
+Multi-layer caching:
+1. **In-memory cache** for API responses (1 minute)
+2. **Database query cache** via Prisma
+3. **Browser cache** for static assets
+
+## Development Workflow
+
+<Steps>
+  <Step title="Local Development">
+    ```bash
+    npm install
+    npm run dev
+    ```
+    Uses Shopify CLI for local development with tunnel
+  </Step>
+  
+  <Step title="Database Migrations">
+    ```bash
+    npx prisma migrate dev --name add_new_field
+    npx prisma generate
+    ```
+    Creates and applies database schema changes
+  </Step>
+  
+  <Step title="Type Checking">
+    ```bash
+    npm run typecheck
+    ```
+    Ensures TypeScript type safety across the codebase
+  </Step>
+  
+  <Step title="Build">
+    ```bash
+    npm run build
+    ```
+    Compiles application for production
+  </Step>
+  
+  <Step title="Docker Build">
+    ```bash
+    docker build -t ecomdrop-ia-connector:latest .
+    ```
+    Creates production Docker image
+  </Step>
+  
+  <Step title="Deploy">
+    ```bash
+    docker-compose up -d
+    ```
+    Deploys to production with Docker Compose
+  </Step>
+</Steps>
+
+## Migration Path
+
+The application has migrated from SQLite to MySQL:
+
+<Warning>
+  If upgrading from SQLite, run migrations carefully:
+  
+  ```bash
+  # Backup SQLite data first
+  npx prisma migrate deploy
+  ```
+</Warning>
+
+### Migration Benefits
+
+- **Better performance** under high load
+- **ACID compliance** for data integrity
+- **Concurrent access** support
+- **Production-ready** reliability
+
+## API Reference
+
+For detailed API documentation, see the [Features](/features#api-endpoints) page.
+
+<CardGroup cols={3}>
+  <Card title="View Features" icon="sparkles" href="/features">
+    Explore all features
+  </Card>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get started quickly
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference">
+    API documentation
+  </Card>
+</CardGroup>

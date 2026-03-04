@@ -1,0 +1,212 @@
+---
+title: "Theme API"
+description: "API endpoints for installing and downloading Shopify themes"
+---
+
+The Theme API provides endpoints for installing themes from remote URLs and serving temporary theme files.
+
+## Install Theme
+
+Installs a theme from a URL to the authenticated Shopify store. Supports public URLs and private GitHub repositories.
+
+<CodeGroup>
+```http POST
+POST /api/theme/install
+```
+</CodeGroup>
+
+### Request Body (Form Data)
+
+<ParamField body="themeUrl" type="string" required>
+  URL of the theme ZIP file or GitHub API URL for private repositories
+  
+  Formats:
+  - Public URL: `https://example.com/theme.zip`
+  - Private GitHub: `github-api://owner/repo/branch?token=YOUR_TOKEN`
+</ParamField>
+
+<ParamField body="themeName" type="string" default="Ecomdrop Theme 2.5">
+  Name for the installed theme
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  Whether the theme was installed successfully
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Success message
+</ResponseField>
+
+<ResponseField name="theme" type="object">
+  Installed theme information from Shopify
+  
+  <Expandable title="Theme Object">
+    <ResponseField name="id" type="integer">
+      Shopify theme ID
+    </ResponseField>
+    
+    <ResponseField name="name" type="string">
+      Theme name
+    </ResponseField>
+    
+    <ResponseField name="role" type="string">
+      Theme role (unpublished, main)
+    </ResponseField>
+    
+    <ResponseField name="created_at" type="string">
+      Creation timestamp
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="error" type="string">
+  Error message (if success is false)
+</ResponseField>
+
+### Example Request
+
+<CodeGroup>
+```bash Public URL
+curl -X POST https://your-app.com/api/theme/install \
+  -F "themeUrl=https://example.com/theme.zip" \
+  -F "themeName=My Custom Theme"
+```
+
+```bash Private GitHub Repo
+curl -X POST https://your-app.com/api/theme/install \
+  -F "themeUrl=github-api://owner/repo/main?token=ghp_xxxxx" \
+  -F "themeName=Ecomdrop Theme 2.5"
+```
+</CodeGroup>
+
+### Example Response
+
+<CodeGroup>
+```json 200 OK
+{
+  "success": true,
+  "message": "Tema instalado exitosamente. Puedes activarlo desde Temas > Personalizar.",
+  "theme": {
+    "id": 123456789,
+    "name": "Ecomdrop Theme 2.5",
+    "role": "unpublished",
+    "created_at": "2026-03-04T10:30:00-05:00"
+  }
+}
+```
+
+```json 400 Bad Request
+{
+  "error": "URL del tema es requerida"
+}
+```
+
+```json 401 Unauthorized
+{
+  "error": "403 Forbidden: El token de GitHub no tiene permisos para acceder al repositorio. Verifica que:\n1. El token tenga el permiso 'repo' (control total de repositorios privados)\n2. El token tenga acceso al repositorio 'owner/repo'\n3. El token no haya expirado\n4. La variable THEME_2_5_GIT_TOKEN esté correctamente configurada en .env"
+}
+```
+
+```json 400 Bad Request
+{
+  "error": "No se pudo acceder a la URL del tema: 404 Not Found. Verifica que la URL sea pública y accesible."
+}
+```
+</CodeGroup>
+
+<Note>
+  Themes are installed as **unpublished** by default. Users must activate them manually from the Shopify admin.
+</Note>
+
+<Warning>
+  For private GitHub repositories, ensure your personal access token has the `repo` scope and access to the repository.
+</Warning>
+
+### GitHub Private Repository Setup
+
+To install themes from private GitHub repositories:
+
+1. Create a GitHub personal access token with `repo` scope
+2. Use the special URL format: `github-api://owner/repo/branch?token=YOUR_TOKEN`
+3. The app will:
+   - Verify token access to the repository
+   - Download the ZIP archive from GitHub
+   - Create a temporary public URL for Shopify to download from
+   - Install the theme via Shopify REST API
+
+### Process Flow
+
+1. **URL Validation**: Verifies the theme URL is accessible
+2. **Download** (for private repos): Downloads the theme ZIP from GitHub
+3. **Temporary Storage**: Stores the ZIP in memory cache (5-minute expiration)
+4. **Public URL**: Creates a temporary public endpoint for Shopify
+5. **Installation**: Shopify downloads and installs the theme
+6. **Cleanup**: Removes temporary files after 10 minutes
+
+---
+
+## Download Theme File
+
+Serves a temporary theme ZIP file for Shopify to download during installation. This endpoint is used internally by the install process.
+
+<CodeGroup>
+```http GET
+GET /api/theme/download/:id
+```
+</CodeGroup>
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  Temporary file ID generated during the install process
+</ParamField>
+
+### Response
+
+Returns the theme ZIP file with appropriate headers for download.
+
+### Response Headers
+
+- `Content-Type`: application/zip
+- `Content-Disposition`: attachment; filename="ecomdrop-theme-2.5.zip"
+- `Content-Length`: File size in bytes
+- `Cache-Control`: no-cache, no-store, must-revalidate
+- `Access-Control-Allow-Origin`: * (allows Shopify to download)
+
+### Example Response
+
+<CodeGroup>
+```http 200 OK
+Content-Type: application/zip
+Content-Disposition: attachment; filename="ecomdrop-theme-2.5.zip"
+Content-Length: 2458624
+
+[Binary ZIP data]
+```
+
+```http 404 Not Found
+Archivo no encontrado o expirado
+```
+
+```http 410 Gone
+Archivo expirado
+```
+</CodeGroup>
+
+<Warning>
+  This endpoint does **not** require authentication to allow Shopify servers to download the file. Files automatically expire after 5 minutes for security.
+</Warning>
+
+<Note>
+  This endpoint is called automatically by Shopify during theme installation. You don't need to call it directly.
+</Note>
+
+### Security Notes
+
+- Files are stored in memory cache, not on disk
+- Each file has a unique random ID
+- Files expire after 5 minutes
+- Expired files are automatically cleaned up
+- CORS is enabled to allow Shopify access

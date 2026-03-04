@@ -1,0 +1,397 @@
+---
+title: Ecomdrop Integration
+description: Connect your Shopify store with Ecomdrop IA Solutions to automate order processing and workflow management
+---
+
+## Overview
+
+The Ecomdrop integration enables automated order processing through intelligent workflows. When orders are created in your Shopify store, they are automatically sent to Ecomdrop for processing, and your orders are updated with tags based on the processing status.
+
+## Getting Your API Key
+
+To connect your store with Ecomdrop, you'll need an API access token from your Ecomdrop account.
+
+<Steps>
+  <Step title="Access Ecomdrop Panel">
+    Log in to your Ecomdrop account at [panel.ecomdrop.app](https://panel.ecomdrop.app)
+  </Step>
+  
+  <Step title="Navigate to API Settings">
+    Go to your account settings and locate the API section
+  </Step>
+  
+  <Step title="Generate Access Token">
+    Create a new API access token or copy your existing token. This will be your `X-ACCESS-TOKEN`.
+  </Step>
+  
+  <Step title="Save the Token">
+    Keep this token secure - you'll need it to configure the app
+  </Step>
+</Steps>
+
+<Warning>
+Never share your API token publicly or commit it to version control. Treat it like a password.
+</Warning>
+
+## Configuring the Integration
+
+<Steps>
+  <Step title="Open App Configuration">
+    In your Shopify admin, navigate to Apps > Ecomdrop IA Connector > Configuration
+  </Step>
+  
+  <Step title="Enter API Key">
+    Paste your Ecomdrop API token in the "Ecomdrop API Key" field
+  </Step>
+  
+  <Step title="Select Flows">
+    Choose which Ecomdrop flows to trigger for:
+    - New orders (`ORDERS_CREATE` webhook)
+    - Abandoned checkouts (`CHECKOUTS_CREATE` webhook)
+  </Step>
+  
+  <Step title="Save Configuration">
+    Click "Save" to activate the integration
+  </Step>
+</Steps>
+
+## Available Flows
+
+The app fetches your available flows from Ecomdrop and displays them for selection:
+
+```typescript
+GET https://panel.ecomdrop.app/api/accounts/flows
+Headers:
+  X-ACCESS-TOKEN: your_api_key
+  accept: application/json
+```
+
+### Response Format
+
+```json
+[
+  {
+    "id": "flow_123",
+    "name": "Process Order",
+    "description": "Automated order processing workflow",
+    "status": "active"
+  }
+]
+```
+
+## Triggering Workflows
+
+### Automatic Triggering
+
+When configured, the app automatically triggers your selected Ecomdrop flows when:
+
+1. **New Order Created** - Shopify sends `ORDERS_CREATE` webhook
+2. **Checkout Abandoned** - Shopify sends `CHECKOUTS_CREATE` webhook
+
+The app sends comprehensive order data to your Ecomdrop flow:
+
+<CodeGroup>
+```json Order Data Payload
+{
+  "orderId": "gid://shopify/Order/1234567890",
+  "orderName": "#1001",
+  "orderNumber": 1001,
+  "createdAt": "2024-03-04T12:00:00Z",
+  "totalPrice": "99.99",
+  "currency": "USD",
+  "financialStatus": "PAID",
+  "fulfillmentStatus": "UNFULFILLED",
+  "lineItems": [
+    {
+      "id": "gid://shopify/LineItem/123",
+      "title": "Product Name",
+      "quantity": 2,
+      "price": "49.99",
+      "sku": "PROD-001",
+      "variantId": "gid://shopify/ProductVariant/456"
+    }
+  ],
+  "customer": {
+    "email": "customer@example.com",
+    "firstName": "John",
+    "lastName": "Doe",
+    "phone": "+1234567890"
+  },
+  "shippingAddress": {
+    "firstName": "John",
+    "lastName": "Doe",
+    "address1": "123 Main St",
+    "city": "New York",
+    "province": "NY",
+    "country": "United States",
+    "zip": "10001",
+    "phone": "+1234567890"
+  },
+  "shop": "yourstore.myshopify.com",
+  "eventType": "order_created",
+  "callbackUrl": "https://your-app.com/api/ecomdrop/callback",
+  "callbackApiKey": "your_api_key"
+}
+```
+</CodeGroup>
+
+### Manual Triggering via API
+
+You can also trigger flows programmatically:
+
+```typescript
+POST https://panel.ecomdrop.app/api/flows/{flowId}/trigger
+Headers:
+  X-ACCESS-TOKEN: your_api_key
+  Content-Type: application/json
+  
+Body:
+{
+  "orderId": "gid://shopify/Order/123",
+  "orderName": "#1001",
+  // ... additional order data
+}
+```
+
+## Callback System
+
+### How It Works
+
+Ecomdrop processes orders asynchronously to avoid timeouts. When processing completes, Ecomdrop calls back to update your order:
+
+<Steps>
+  <Step title="Order Created">
+    Shopify webhook triggers and sends order data to Ecomdrop
+  </Step>
+  
+  <Step title="Ecomdrop Processes">
+    Your flow processes the order (may take minutes)
+  </Step>
+  
+  <Step title="Callback Sent">
+    Ecomdrop POSTs results to your callback URL
+  </Step>
+  
+  <Step title="Order Updated">
+    App updates Shopify order with status tags
+  </Step>
+</Steps>
+
+### Callback Endpoint
+
+```
+POST /api/ecomdrop/callback
+```
+
+### Expected Payload
+
+Ecomdrop should send this payload when processing completes:
+
+<CodeGroup>
+```json Success Callback
+{
+  "orderName": "#1001",
+  "shop": "yourstore.myshopify.com",
+  "apiKey": "your_ecomdrop_api_key",
+  "status": "success",
+  "tag": "ecomdrop-processed"
+}
+```
+
+```json Custom Tags
+{
+  "orderName": "#1001",
+  "apiKey": "your_api_key",
+  "tags": ["processed", "shipped", "tracked"]
+}
+```
+
+```json Error Callback
+{
+  "orderName": "#1001",
+  "apiKey": "your_api_key",
+  "status": "error",
+  "tag": "ecomdrop-error"
+}
+```
+</CodeGroup>
+
+### Callback Parameters
+
+<ParamField path="apiKey" type="string" required>
+  Your Ecomdrop API key for authentication
+</ParamField>
+
+<ParamField path="orderName" type="string" required>
+  Order identifier in format `#1001` (this is what Ecomdrop receives)
+</ParamField>
+
+<ParamField path="orderId" type="string">
+  Alternative: GraphQL order ID like `gid://shopify/Order/123`
+</ParamField>
+
+<ParamField path="shop" type="string">
+  Store domain (e.g., `yourstore.myshopify.com`). Optional if API key identifies the shop.
+</ParamField>
+
+<ParamField path="tag" type="string">
+  Single tag to add to the order
+</ParamField>
+
+<ParamField path="tags" type="string | array">
+  Multiple tags as array `["tag1", "tag2"]` or comma-separated string
+</ParamField>
+
+<ParamField path="status" type="string">
+  Processing status: `success`, `completed`, `pending`, `error`, or `failed`. Automatically mapped to tags.
+</ParamField>
+
+### Status Tag Mapping
+
+When using the `status` field, tags are automatically assigned:
+
+| Status | Tag Added |
+|--------|----------|
+| `success` | `ecomdrop-processed` |
+| `completed` | `ecomdrop-completed` |
+| `pending` | `ecomdrop-pending` |
+| `error` | `ecomdrop-error` |
+| `failed` | `ecomdrop-error` |
+
+### Response Format
+
+<CodeGroup>
+```json Success Response
+{
+  "success": true,
+  "message": "Tags added successfully: ecomdrop-processed",
+  "orderId": "gid://shopify/Order/1234567890",
+  "tags": ["ecomdrop-processed"]
+}
+```
+
+```json Error Response
+{
+  "success": false,
+  "error": "Invalid API key"
+}
+```
+</CodeGroup>
+
+## Testing the Callback
+
+### Using cURL
+
+```bash
+curl -X POST https://your-app-url.com/api/ecomdrop/callback \
+  -H "Content-Type: application/json" \
+  -d '{
+    "orderName": "#1001",
+    "apiKey": "your_ecomdrop_api_key",
+    "status": "success",
+    "tag": "test-processed"
+  }'
+```
+
+### Using Postman
+
+<Steps>
+  <Step title="Create POST Request">
+    Method: `POST`  
+    URL: `https://your-app-url.com/api/ecomdrop/callback`
+  </Step>
+  
+  <Step title="Set Headers">
+    ```
+    Content-Type: application/json
+    ```
+  </Step>
+  
+  <Step title="Add Body">
+    ```json
+    {
+      "orderName": "#1001",
+      "apiKey": "your_api_key",
+      "status": "success"
+    }
+    ```
+  </Step>
+  
+  <Step title="Send Request">
+    Verify the order in Shopify receives the tag
+  </Step>
+</Steps>
+
+## Authentication & Security
+
+The callback endpoint validates:
+
+1. **API Key Match** - The provided API key must exist in the database
+2. **Shop Verification** - API key must belong to the correct shop
+3. **Session Active** - Shopify app must be installed on the shop
+
+<Note>
+The endpoint returns HTTP 200 even for errors to prevent Shopify from retrying failed webhooks. Check the response body for actual status.
+</Note>
+
+## Error Handling
+
+### Common Errors
+
+<Accordion title="Invalid API key (401)">
+  **Cause**: The API key doesn't match any configured shop  
+  **Solution**: Verify the API key in your app configuration matches what Ecomdrop is sending
+</Accordion>
+
+<Accordion title="Order not found (404)">
+  **Cause**: The order name doesn't exist in the shop  
+  **Solution**: Ensure the `orderName` format is correct (e.g., `#1001`)
+</Accordion>
+
+<Accordion title="No active session (404)">
+  **Cause**: App is not installed on the shop  
+  **Solution**: Reinstall the app on the Shopify store
+</Accordion>
+
+<Accordion title="Protected data error (403)">
+  **Cause**: App not approved for protected customer data access  
+  **Solution**: This will work after app publication and Shopify approval
+</Accordion>
+
+## Rate Limiting
+
+The app implements a 1-minute cache for flow listings to prevent rate limiting:
+
+```typescript
+// Flows are cached for 60 seconds
+const CACHE_DURATION = 60000; // 1 minute
+```
+
+<Note>
+Flows are automatically refreshed when you navigate to the configuration page after the cache expires.
+</Note>
+
+## Best Practices
+
+1. **Use Callbacks** - Always configure callback URLs to handle async processing
+2. **Monitor Tags** - Set up Shopify Flow rules to act on Ecomdrop tags
+3. **Test Thoroughly** - Use the test endpoints before going live
+4. **Handle Errors** - Monitor for `ecomdrop-error` tags and investigate
+5. **Secure API Keys** - Rotate API keys periodically for security
+
+## Code Reference
+
+Integration code location in source:
+
+- API Client: `app/lib/ecomdrop.api.server.ts:31`
+- Callback Handler: `app/routes/api.ecomdrop.callback.tsx:22`
+- Webhook Handler: `app/routes/webhooks.orders.create.tsx:7`
+
+## Support
+
+If you encounter issues:
+
+1. Check server logs for detailed error messages
+2. Verify API key is correctly configured in both systems
+3. Ensure callback URL is accessible from Ecomdrop servers
+4. Test with the manual callback endpoints first

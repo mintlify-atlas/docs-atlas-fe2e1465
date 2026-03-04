@@ -1,0 +1,452 @@
+---
+title: Dropi Integration
+description: Browse and import products from Dropi marketplace directly into your Shopify store
+---
+
+## Overview
+
+The Dropi integration allows you to browse products from the Dropi marketplace and import them directly into your Shopify store. Dropi provides access to suppliers across Latin America with support for multiple countries.
+
+## Supported Countries
+
+Dropi supports the following countries:
+
+| Country | Code | Field ID |
+|---------|------|----------|
+| Colombia | CO | 640597 |
+| Ecuador | EC | 805359 |
+| Chile | CL | 665134 |
+| Guatemala | GT | 747995 |
+| Mexico | MX | 641097 |
+| Panama | PA | 742965 |
+| Peru | PE | 142979 |
+| Paraguay | PY | 240677 |
+
+<Note>
+Each country has a unique field ID used for API configuration. The app handles this mapping automatically.
+</Note>
+
+## Getting Your Dropi Token
+
+<Steps>
+  <Step title="Access Dropi Account">
+    Log in to your Dropi account at [dropi.co](https://dropi.co)
+  </Step>
+  
+  <Step title="Navigate to Integrations">
+    Go to your account settings and find the integrations or API section
+  </Step>
+  
+  <Step title="Generate Integration Key">
+    Create a new integration key or copy your existing `dropi-integration-key`
+  </Step>
+  
+  <Step title="Save Securely">
+    Store this token safely - you'll need it for configuration
+  </Step>
+</Steps>
+
+## Configuring Dropi
+
+Before you can browse and import Dropi products, you need to configure the integration:
+
+<Steps>
+  <Step title="Configure Ecomdrop First">
+    Dropi configuration is saved via Ecomdrop's API. Ensure you have your Ecomdrop API key configured first.
+  </Step>
+  
+  <Step title="Open Configuration Page">
+    Navigate to Apps > Ecomdrop IA Connector > Configuration
+  </Step>
+  
+  <Step title="Fill Dropi Details">
+    Complete the Dropi configuration form:
+    - **Store Name**: Your business name in Dropi
+    - **Country**: Select your operating country
+    - **Dropi Token**: Your integration key from Dropi
+  </Step>
+  
+  <Step title="Save Configuration">
+    Click "Save Dropi Configuration" to validate and store your settings
+  </Step>
+</Steps>
+
+### Configuration API Call
+
+When you save configuration, the app makes this API call:
+
+```typescript
+POST https://panel.ecomdrop.app/api/accounts/bot_fields/{fieldId}
+Headers:
+  X-ACCESS-TOKEN: your_ecomdrop_api_key
+  Content-Type: application/x-www-form-urlencoded
+  
+Body:
+  value={your_dropi_token}
+```
+
+The `fieldId` is automatically determined based on your selected country.
+
+<Warning>
+You must have a valid Ecomdrop API key configured before saving Dropi settings. The Dropi token is stored in Ecomdrop's system.
+</Warning>
+
+## Browsing Products
+
+Once configured, you can browse Dropi products from the app:
+
+### Product Catalog Access
+
+<Steps>
+  <Step title="Navigate to Products">
+    Go to Apps > Ecomdrop IA Connector > Products
+  </Step>
+  
+  <Step title="Browse Dropi Tab">
+    Click on the "Dropi Products" tab
+  </Step>
+  
+  <Step title="Search & Filter">
+    Use search and filters:
+    - **Search**: Find products by keywords
+    - **Favorites**: View your favorited products in Dropi
+    - **Private Products**: Show your private product catalog
+  </Step>
+  
+  <Step title="View Details">
+    Click on any product to see full details, images, and variants
+  </Step>
+</Steps>
+
+### API Endpoint
+
+The app fetches products from Dropi's API:
+
+```typescript
+POST https://api.dropi.co/integrations/products/index
+Headers:
+  Content-Type: application/json
+  Origin: https://n8n.ecomdropsolutions.com
+  Referer: https://n8n.ecomdropsolutions.com
+  dropi-integration-key: your_dropi_token
+```
+
+### Request Parameters
+
+<CodeGroup>
+```json Default Browse Request
+{
+  "pageSize": 50,
+  "startData": 0,
+  "keywords": "",
+  "userVerified": false,
+  "order_by": "created_at",
+  "order_type": "desc",
+  "with_collection": true,
+  "get_stock": true,
+  "no_count": false,
+  "favorite": true
+}
+```
+
+```json Search Request
+{
+  "pageSize": 50,
+  "startData": 0,
+  "keywords": "electronics",
+  "userVerified": false,
+  "order_by": "created_at",
+  "order_type": "desc",
+  "with_collection": true,
+  "get_stock": true,
+  "no_count": false
+}
+```
+
+```json Private Products Request
+{
+  "pageSize": 50,
+  "startData": 0,
+  "keywords": "",
+  "userVerified": false,
+  "order_by": "created_at",
+  "order_type": "desc",
+  "with_collection": true,
+  "get_stock": true,
+  "no_count": false,
+  "privated_product": true
+}
+```
+</CodeGroup>
+
+<Note>
+When searching, only `keywords` is sent. When browsing, either `favorite: true` (default) or `privated_product: true` is sent, but never both.
+</Note>
+
+### Response Format
+
+```json
+[
+  {
+    "objects": [
+      {
+        "id": 12345,
+        "name": "Product Name",
+        "description": "Product description",
+        "price": "29.99",
+        "images": [
+          {
+            "url": "https://cdn.dropi.co/image1.jpg",
+            "position": 1
+          }
+        ],
+        "variants": [
+          {
+            "id": 67890,
+            "sku": "PROD-001",
+            "price": "29.99",
+            "stock": 100
+          }
+        ],
+        "collections": ["Electronics", "Gadgets"],
+        "stock": 100
+      }
+    ],
+    "count": 150
+  }
+]
+```
+
+## Importing Products
+
+Import Dropi products into your Shopify store:
+
+<Steps>
+  <Step title="Select Product">
+    Browse Dropi products and click on one to view details
+  </Step>
+  
+  <Step title="Review Product Info">
+    Check the product details, images, and variants
+  </Step>
+  
+  <Step title="Click Import">
+    Click the "Import to Shopify" button
+  </Step>
+  
+  <Step title="Map Product Data">
+    The app automatically:
+    - Creates the product in Shopify
+    - Uploads product images
+    - Creates variants with SKUs
+    - Sets pricing
+    - Saves the association for future sync
+  </Step>
+  
+  <Step title="Verify in Shopify">
+    Navigate to Shopify Products to see your imported product
+  </Step>
+</Steps>
+
+### Product Association
+
+When you import a product, the app creates an association record:
+
+```typescript
+{
+  shop: "yourstore.myshopify.com",
+  shopifyProductId: "gid://shopify/Product/123",
+  dropiProductId: "12345",
+  dropiProductName: "Product Name",
+  lastSyncedAt: "2024-03-04T12:00:00Z"
+}
+```
+
+This allows the app to:
+- Track which products are imported
+- Prevent duplicate imports
+- Enable future synchronization
+- Display import status
+
+## Pagination & Performance
+
+The product browser supports pagination for large catalogs:
+
+<ParamField path="pageSize" type="number" default="50">
+  Number of products to fetch per page (max 100)
+</ParamField>
+
+<ParamField path="startData" type="number" default="0">
+  Starting offset for pagination (0-based)
+</ParamField>
+
+### Example Pagination
+
+```typescript
+// Page 1 (products 1-50)
+{ pageSize: 50, startData: 0 }
+
+// Page 2 (products 51-100)
+{ pageSize: 50, startData: 50 }
+
+// Page 3 (products 101-150)
+{ pageSize: 50, startData: 100 }
+```
+
+## Filter Options
+
+### Favorites Only
+
+Show only products you've marked as favorites in Dropi:
+
+```json
+{
+  "favorite": true
+}
+```
+
+### Private Products
+
+Show your private product catalog:
+
+```json
+{
+  "privated_product": true
+}
+```
+
+### Search by Keywords
+
+Search across product names and descriptions:
+
+```json
+{
+  "keywords": "smartphone",
+  "hasSearch": true
+}
+```
+
+<Note>
+When searching, favorite and private filters are ignored to show all matching results.
+</Note>
+
+## Troubleshooting
+
+### Common Issues
+
+<Accordion title="No products showing">
+  **Possible Causes**:
+  - Invalid Dropi token
+  - No products in your selected filter (favorites/private)
+  - Network connectivity issues
+  
+  **Solutions**:
+  1. Verify your Dropi token is correct
+  2. Try switching between favorites and private products
+  3. Check browser console for API errors
+</Accordion>
+
+<Accordion title="Configuration not saving">
+  **Possible Causes**:
+  - Missing Ecomdrop API key
+  - Invalid country code
+  - Invalid Dropi token format
+  
+  **Solutions**:
+  1. Configure Ecomdrop API key first
+  2. Select a country from the dropdown
+  3. Verify token from Dropi dashboard
+</Accordion>
+
+<Accordion title="Products not importing">
+  **Possible Causes**:
+  - Shopify API rate limits
+  - Missing product data (images, variants)
+  - Duplicate product exists
+  
+  **Solutions**:
+  1. Wait a moment and retry
+  2. Check if product already exists in Shopify
+  3. Review server logs for specific errors
+</Accordion>
+
+<Accordion title="API Error 401 or 403">
+  **Cause**: Invalid or expired Dropi token
+  
+  **Solution**: 
+  1. Go to Dropi dashboard
+  2. Generate a new integration key
+  3. Update in app configuration
+</Accordion>
+
+## Data Synchronization
+
+### Current Behavior
+
+The current version supports:
+- ✅ One-time product import from Dropi to Shopify
+- ✅ Product association tracking
+- ✅ Duplicate detection
+
+### Future Features
+
+<Note>
+Planned features include:
+- Automatic inventory sync
+- Price updates from Dropi
+- Bulk product import
+- Product update notifications
+</Note>
+
+## Security & Authentication
+
+The Dropi integration uses multiple security layers:
+
+1. **Dropi Integration Key** - Authenticates requests to Dropi API
+2. **Ecomdrop API Key** - Validates configuration saves
+3. **Shopify Session** - Ensures user has access to the store
+4. **Database Validation** - Verifies shop ownership
+
+<Warning>
+Dropi tokens are stored in both:
+1. Your local database (encrypted)
+2. Ecomdrop's bot_fields system
+
+Ensure both are kept in sync for proper operation.
+</Warning>
+
+## API Rate Limits
+
+Dropi API has rate limits to ensure fair usage:
+
+- **Requests per minute**: Varies by account tier
+- **Concurrent requests**: Limited to prevent overload
+
+<Note>
+The app handles rate limiting gracefully by showing empty results on error. Check server logs if you suspect rate limiting.
+</Note>
+
+## Code Reference
+
+Dropi integration code locations:
+
+- Product Browser: `app/routes/api.dropi.products.tsx:5`
+- Configuration Save: `app/routes/api.integrations.dropi.save.tsx:11`
+- Country Mapping: `app/lib/ecomdrop.api.server.ts:152`
+
+## Best Practices
+
+1. **Configure Once** - Set up Dropi integration before browsing products
+2. **Use Favorites** - Mark products as favorites in Dropi for easier browsing
+3. **Check Associations** - Verify products aren't already imported before clicking import
+4. **Monitor Stock** - Keep an eye on Dropi stock levels before importing
+5. **Test with Few Products** - Import 1-2 products first to verify setup
+
+## Support
+
+For Dropi-specific issues:
+
+1. Contact Dropi support for account and token issues
+2. Check the app's server logs for API errors
+3. Verify your account has access to products in your selected country
+4. Ensure your Dropi account is active and verified

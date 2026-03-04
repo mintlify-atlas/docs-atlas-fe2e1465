@@ -1,0 +1,347 @@
+---
+title: 'Installation'
+description: 'Install and set up the Ecomdrop IA Connector Shopify app on your development machine'
+---
+
+## Prerequisites
+
+Before installing the Ecomdrop IA Connector, ensure you have the following prerequisites installed and configured:
+
+### Required Software
+
+<Steps>
+  <Step title="Node.js 20.19+ or 22.12+">
+    The application requires Node.js version 20.19 or higher, or version 22.12 or higher.
+
+    **Download and Install:**
+    - Visit [nodejs.org](https://nodejs.org/en/download/)
+    - Download the LTS version for your operating system
+    - Follow the installation instructions
+
+    **Verify Installation:**
+    ```bash
+    node --version
+    # Should output: v20.19.0 or higher, or v22.12.0 or higher
+
+    npm --version
+    # Should output: 10.x.x or higher
+    ```
+  </Step>
+
+  <Step title="Shopify CLI">
+    The Shopify CLI is required for local development, app deployment, and managing Shopify app configuration.
+
+    **Install Globally:**
+    ```bash
+    npm install -g @shopify/cli@latest
+    ```
+
+    **Verify Installation:**
+    ```bash
+    shopify version
+    # Should output the installed version
+    ```
+
+    <Note>
+      If you encounter permission errors on macOS/Linux, you may need to use `sudo` or configure npm to install global packages without sudo.
+    </Note>
+  </Step>
+
+  <Step title="MySQL 8.0">
+    The application uses MySQL 8.0 as the production database with Prisma ORM.
+
+    **Installation Options:**
+
+    <Tabs>
+      <Tab title="macOS (Homebrew)">
+        ```bash
+        brew install mysql@8.0
+        brew services start mysql@8.0
+        ```
+      </Tab>
+      <Tab title="Ubuntu/Debian">
+        ```bash
+        sudo apt update
+        sudo apt install mysql-server-8.0
+        sudo systemctl start mysql
+        sudo systemctl enable mysql
+        ```
+      </Tab>
+      <Tab title="Windows">
+        Download and install MySQL 8.0 from [mysql.com/downloads](https://dev.mysql.com/downloads/mysql/)
+      </Tab>
+      <Tab title="Docker">
+        ```bash
+        docker run -d \
+          --name mysql \
+          -e MYSQL_ROOT_PASSWORD=your_password \
+          -e MYSQL_DATABASE=shopify_app \
+          -p 3306:3306 \
+          mysql:8.0
+        ```
+      </Tab>
+    </Tabs>
+
+    **Verify Installation:**
+    ```bash
+    mysql --version
+    # Should output: mysql Ver 8.0.x
+    ```
+  </Step>
+
+  <Step title="Git">
+    Git is required to clone the repository.
+
+    **Install Git:**
+    - Visit [git-scm.com](https://git-scm.com/downloads)
+    - Download and install for your operating system
+
+    **Verify Installation:**
+    ```bash
+    git --version
+    # Should output: git version 2.x.x or higher
+    ```
+  </Step>
+</Steps>
+
+### Shopify Requirements
+
+<Steps>
+  <Step title="Shopify Partner Account">
+    You need a Shopify Partner account to create and manage Shopify apps.
+
+    **Create Account:**
+    1. Visit [partners.shopify.com/signup](https://partners.shopify.com/signup)
+    2. Fill out the registration form
+    3. Verify your email address
+    4. Complete your partner profile
+  </Step>
+
+  <Step title="Development Store">
+    A development store is required to test your Shopify app.
+
+    **Create Development Store:**
+    1. Log in to your [Shopify Partners Dashboard](https://partners.shopify.com/)
+    2. Navigate to **Stores** > **Add store**
+    3. Select **Development store**
+    4. Choose a store type (Development store or Shopify Plus sandbox)
+    5. Fill in the store details and create
+
+    <Tip>
+      Development stores are free and include all Shopify features for testing purposes.
+    </Tip>
+  </Step>
+</Steps>
+
+## Installation
+
+<Steps>
+  <Step title="Clone the Repository">
+    Clone the Ecomdrop IA Connector repository to your local machine:
+
+    ```bash
+    git clone <repository-url>
+    cd ecomdrop-ia-connector
+    ```
+
+    <Note>
+      Replace `<repository-url>` with the actual repository URL provided by your team.
+    </Note>
+  </Step>
+
+  <Step title="Install Dependencies">
+    Install all required npm packages:
+
+    ```bash
+    npm install
+    ```
+
+    This will install all dependencies defined in `package.json`, including:
+
+    **Core Dependencies:**
+    - `@shopify/shopify-app-react-router` - Shopify app framework
+    - `@prisma/client` - Database ORM
+    - `react-router` v7 - Modern routing and data loading
+    - `mysql2` - MySQL database driver
+
+    **UI Libraries:**
+    - `@radix-ui/*` - Accessible component primitives
+    - `tailwindcss` - Utility-first CSS framework
+    - `lucide-react` - Icon library
+
+    **Development Tools:**
+    - `typescript` - Type safety
+    - `vite` - Fast build tool
+    - `eslint` - Code linting
+    - `prettier` - Code formatting
+
+    <Warning>
+      The installation may take several minutes depending on your internet connection.
+    </Warning>
+  </Step>
+
+  <Step title="Verify Installation">
+    Verify that all dependencies were installed correctly:
+
+    ```bash
+    npm list --depth=0
+    ```
+
+    You should see a list of all installed packages without any errors.
+
+    **Check for Vulnerabilities:**
+    ```bash
+    npm audit
+    ```
+
+    If there are any vulnerabilities, you can attempt to fix them:
+    ```bash
+    npm audit fix
+    ```
+  </Step>
+</Steps>
+
+## Project Structure
+
+After installation, your project structure should look like this:
+
+```
+ecomdrop-ia-connector/
+├── app/
+│   ├── components/          # React components
+│   │   ├── ui/             # shadcn/ui components
+│   │   └── modals/         # Custom modal components
+│   ├── lib/                # Utility functions and API clients
+│   ├── routes/             # React Router routes
+│   └── shopify.server.ts   # Shopify authentication
+├── prisma/
+│   ├── schema.prisma       # Database schema (MySQL)
+│   └── migrations/         # Database migrations
+├── public/                 # Static assets
+├── node_modules/           # Installed dependencies
+├── Dockerfile              # Production Docker image
+├── docker-compose.yml      # Docker Compose configuration
+├── package.json            # Dependencies and scripts
+├── tsconfig.json           # TypeScript configuration
+├── tailwind.config.ts      # Tailwind CSS configuration
+├── vite.config.ts          # Vite build configuration
+└── shopify.app.toml        # Shopify app configuration
+```
+
+## Available Scripts
+
+After installation, you have access to these npm scripts:
+
+<CodeGroup>
+```bash Development
+# Start development server with Shopify CLI
+npm run dev
+
+# Type check TypeScript files
+npm run typecheck
+
+# Lint code with ESLint
+npm run lint
+```
+
+```bash Database
+# Generate Prisma Client and run migrations
+npm run setup
+
+# Generate Prisma Client only
+npx prisma generate
+
+# Create and apply a new migration
+npx prisma migrate dev
+
+# Apply migrations in production
+npx prisma migrate deploy
+
+# Open Prisma Studio (database GUI)
+npx prisma studio
+```
+
+```bash Build & Deploy
+# Build for production
+npm run build
+
+# Start production server
+npm run start
+
+# Deploy to Shopify
+npm run deploy
+```
+
+```bash Shopify CLI
+# Link to existing Shopify app configuration
+npm run config:link
+
+# Generate Shopify app extensions
+npm run generate
+
+# Manage environment variables
+npm run env
+```
+</CodeGroup>
+
+## Next Steps
+
+Now that you have installed the Ecomdrop IA Connector, proceed to:
+
+<CardGroup cols={2}>
+  <Card title="Environment Setup" icon="gear" href="/getting-started/environment-setup">
+    Configure environment variables and Shopify API credentials
+  </Card>
+  
+  <Card title="Database Setup" icon="database" href="/getting-started/database-setup">
+    Set up MySQL database and run Prisma migrations
+  </Card>
+  
+  <Card title="Quickstart Guide" icon="rocket" href="/getting-started/quickstart">
+    Get the app running in minutes with a fast-track setup
+  </Card>
+  
+  <Card title="Development Guide" icon="code" href="/development">
+    Learn about the development workflow and best practices
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+### Node.js Version Mismatch
+
+If you get an error about Node.js version:
+
+```bash
+error ecomdrop-ia-connector@1.0.0: The engine "node" is incompatible with this module.
+```
+
+**Solution:** Install the correct Node.js version (20.19+ or 22.12+)
+
+### npm install Fails
+
+If `npm install` fails with permission errors:
+
+**macOS/Linux:**
+```bash
+sudo chown -R $(whoami) ~/.npm
+sudo chown -R $(whoami) /usr/local/lib/node_modules
+```
+
+**Windows:** Run your terminal as Administrator
+
+### Shopify CLI Not Found
+
+If `shopify` command is not recognized:
+
+```bash
+# Reinstall Shopify CLI globally
+npm install -g @shopify/cli@latest
+
+# Verify PATH includes npm global bin directory
+echo $PATH
+```
+
+<Note>
+  For more troubleshooting help, see the main [README](https://github.com/your-repo/ecomdrop-ia-connector#troubleshooting) or contact your development team.
+</Note>

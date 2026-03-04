@@ -1,0 +1,409 @@
+---
+title: 'Theme Management'
+description: 'Install and manage the Ecomdrop premium theme from Git repositories with version control'
+---
+
+## Overview
+
+The Theme Management feature enables you to install the Ecomdrop Theme 2.5 directly from a Git repository to your Shopify store. The theme is optimized for dropshipping, features Ecomdrop AI integration, and can be updated through version control.
+
+## Theme Features
+
+The Ecomdrop Theme 2.5 includes:
+
+<Tabs>
+  <Tab title="Design">
+    - Modern, responsive design that works on all devices
+    - Customizable color schemes and typography
+    - Multiple layout options for product pages
+    - Professional, conversion-optimized checkout flow
+  </Tab>
+  
+  <Tab title="Performance">
+    - Fast page load times
+    - Optimized images with lazy loading
+    - Minimal JavaScript for better performance
+    - SEO-friendly structure
+  </Tab>
+  
+  <Tab title="Integration">
+    - Native Ecomdrop AI assistant integration
+    - Dropi product support
+    - Automated fulfillment workflows
+    - Webhook-ready for order automation
+  </Tab>
+  
+  <Tab title="Customization">
+    - Multiple customizable sections
+    - Drag-and-drop page builder compatibility
+    - Multi-language support
+    - RTL (right-to-left) language support
+  </Tab>
+</Tabs>
+
+## Installing the Theme
+
+<Steps>
+  <Step title="Access Theme Management">
+    Navigate to the **Theme 2.5** page in your Ecomdrop IA Connector dashboard.
+  </Step>
+  
+  <Step title="Review Theme Information">
+    Review the theme features and characteristics listed on the page.
+  </Step>
+  
+  <Step title="Click Install">
+    Click the **Instalar Tema** (Install Theme) button.
+    
+    <Warning>
+      Installing a theme does not automatically activate it. You'll need to activate it manually from your Shopify admin.
+    </Warning>
+  </Step>
+  
+  <Step title="Confirm Installation">
+    Confirm that you want to install "Ecomdrop Theme 2.5" in the confirmation dialog.
+  </Step>
+  
+  <Step title="Wait for Installation">
+    The app will:
+    - Download the theme from the Git repository
+    - Extract theme files
+    - Upload to your Shopify store
+    - Create a new unpublished theme
+    
+    This process typically takes 30-60 seconds.
+  </Step>
+  
+  <Step title="Verify Installation">
+    Upon success, you'll see a confirmation message. The theme is now installed but not active.
+  </Step>
+</Steps>
+
+## Git Repository Configuration
+
+The theme is sourced from a Git repository configured via environment variables:
+
+### GitHub Configuration
+
+<Accordion title="Public Repository">
+  For public GitHub repositories:
+  
+  ```bash
+  THEME_2_5_GIT_REPO=Mercaline2024/Thema-ecomdro2.5
+  THEME_2_5_GIT_BRANCH=main
+  THEME_2_5_GIT_PROVIDER=github
+  ```
+  
+  The app constructs a download URL:
+  ```
+  https://github.com/Mercaline2024/Thema-ecomdro2.5/archive/refs/heads/main.zip
+  ```
+</Accordion>
+
+<Accordion title="Private Repository">
+  For private GitHub repositories, include a personal access token:
+  
+  ```bash
+  THEME_2_5_GIT_REPO=Mercaline2024/Thema-ecomdro2.5
+  THEME_2_5_GIT_BRANCH=main
+  THEME_2_5_GIT_PROVIDER=github
+  THEME_2_5_GIT_TOKEN=github_pat_XXXXXXXXXXXXX
+  ```
+  
+  The app uses the GitHub API with authentication to download the repository.
+</Accordion>
+
+### GitLab Configuration
+
+For GitLab repositories:
+
+```bash
+THEME_2_5_GIT_REPO=owner/repository
+THEME_2_5_GIT_BRANCH=main
+THEME_2_5_GIT_PROVIDER=gitlab
+THEME_2_5_GIT_TOKEN=glpat-XXXXXXXXXXXXX  # For private repos
+```
+
+### Direct URL
+
+Alternatively, provide a direct download URL:
+
+```bash
+THEME_2_5_URL=https://example.com/theme-2.5.zip
+```
+
+<Note>
+  Direct URLs bypass Git configuration and download directly from the specified location.
+</Note>
+
+## Installation Process
+
+Behind the scenes, the app performs these steps:
+
+<Steps>
+  <Step title="Download Theme">
+    The app fetches the theme ZIP file from:
+    - Git repository (GitHub/GitLab API)
+    - Direct URL
+    - Public repository archive URL
+  </Step>
+  
+  <Step title="Extract Files">
+    Theme files are extracted from the ZIP archive to a temporary directory.
+  </Step>
+  
+  <Step title="Prepare Theme Assets">
+    The app organizes theme files into Shopify's expected structure:
+    - `assets/` - CSS, JavaScript, images
+    - `config/` - Theme settings JSON
+    - `layout/` - Layout Liquid files
+    - `locales/` - Translation files
+    - `sections/` - Section Liquid files
+    - `snippets/` - Reusable Liquid snippets
+    - `templates/` - Page templates
+  </Step>
+  
+  <Step title="Upload to Shopify">
+    Using the Shopify GraphQL Admin API, the app:
+    1. Creates a new unpublished theme
+    2. Uploads all theme files via the `ThemeFilesUpsert` mutation
+    3. Sets the theme name to "Ecomdrop Theme 2.5"
+  </Step>
+  
+  <Step title="Verify Upload">
+    The app confirms all files were uploaded successfully and returns the new theme ID.
+  </Step>
+</Steps>
+
+## Activating the Theme
+
+After installation:
+
+<Steps>
+  <Step title="Access Shopify Admin">
+    Go to your Shopify admin panel → **Online Store** → **Themes**.
+  </Step>
+  
+  <Step title="Find the Theme">
+    Locate "Ecomdrop Theme 2.5" in the **Theme library** section (unpublished themes).
+  </Step>
+  
+  <Step title="Preview the Theme">
+    Click **Customize** to preview and customize the theme before publishing.
+    
+    <Note>
+      Use Shopify's theme editor to adjust colors, fonts, sections, and settings.
+    </Note>
+  </Step>
+  
+  <Step title="Publish the Theme">
+    When ready, click **Publish** to make it your active theme.
+    
+    <Warning>
+      Publishing will replace your current active theme. Consider backing up your current theme first.
+    </Warning>
+  </Step>
+</Steps>
+
+## Theme Preview
+
+The app includes a built-in theme preview feature:
+
+### Viewing Preview
+
+In the **Vista Previa** (Preview) section:
+
+1. The app displays an iframe showing your active theme
+2. The preview URL includes the theme ID parameter:
+   ```
+   https://your-store.myshopify.com/?preview_theme_id=123456789
+   ```
+3. Click **Abrir en nueva pestaña** (Open in new tab) to view in a full browser window
+
+### Preview Limitations
+
+<Note>
+  Some Shopify stores may have iframe restrictions. If the preview doesn't load, use the "Open in new tab" button.
+</Note>
+
+## Version Management
+
+### Updating the Theme
+
+To update to a new version:
+
+<Steps>
+  <Step title="Update Git Repository">
+    Ensure the latest theme version is committed to your Git repository branch.
+  </Step>
+  
+  <Step title="Reinstall Theme">
+    Click **Instalar Tema** again in the app. This creates a new unpublished theme with the latest version.
+  </Step>
+  
+  <Step title="Test New Version">
+    Preview and test the new theme version using Shopify's theme customizer.
+  </Step>
+  
+  <Step title="Publish Updated Theme">
+    When satisfied, publish the new version. The old version remains in your theme library as a backup.
+  </Step>
+</Steps>
+
+### Multiple Versions
+
+You can have multiple theme versions installed:
+
+- Production (active)
+- Staging (unpublished)
+- Development (unpublished)
+- Backup versions
+
+Shopify allows up to 20 themes per store.
+
+## Theme Configuration Files
+
+The Ecomdrop Theme includes configuration in `config/settings_schema.json`:
+
+<Tabs>
+  <Tab title="General Settings">
+    - Logo and favicon
+    - Color schemes
+    - Typography
+    - Layout options
+  </Tab>
+  
+  <Tab title="Homepage">
+    - Hero section settings
+    - Featured collections
+    - Promotional banners
+    - Testimonials
+  </Tab>
+  
+  <Tab title="Product Pages">
+    - Image gallery layout
+    - Product description format
+    - Reviews integration
+    - Related products
+  </Tab>
+  
+  <Tab title="AI Integration">
+    - AI chat widget settings
+    - Assistant positioning
+    - Trigger behavior
+    - Branding options
+  </Tab>
+</Tabs>
+
+## Customizing the Theme
+
+After installation, customize through Shopify's theme editor:
+
+1. **Theme Settings**: Global settings like colors and fonts
+2. **Sections**: Add, remove, or reorder page sections
+3. **Navigation**: Configure menus and navigation structure
+4. **Checkout**: Customize checkout appearance (Shopify Plus only)
+
+## API Integration
+
+The theme installation uses Shopify's GraphQL Admin API:
+
+### Creating Theme
+
+```graphql
+mutation CreateTheme($name: String!) {
+  themeCreate(name: $name) {
+    theme {
+      id
+      name
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+```
+
+### Uploading Files
+
+```graphql
+mutation UploadThemeFiles($themeId: ID!, $files: [ThemeFileInput!]!) {
+  themeFilesUpsert(themeId: $themeId, files: $files) {
+    upsertedThemeFiles {
+      filename
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Installation fails">
+    - Check that environment variables are configured correctly
+    - Verify Git token has read access to the repository
+    - Ensure repository and branch names are correct
+    - Check server logs for detailed error messages
+    - Verify network connectivity to GitHub/GitLab
+  </Accordion>
+  
+  <Accordion title="Theme appears broken after installation">
+    - Ensure all theme files were uploaded (check file count)
+    - Verify theme structure matches Shopify requirements
+    - Check for missing assets (images, CSS, JavaScript)
+    - Review theme errors in Shopify admin
+  </Accordion>
+  
+  <Accordion title="Preview not loading">
+    - Try opening preview in a new tab instead of iframe
+    - Check browser console for errors
+    - Verify the theme ID is correct
+    - Ensure store allows theme previews
+  </Accordion>
+  
+  <Accordion title="Cannot download from private repository">
+    - Verify Git token is valid and not expired
+    - Ensure token has appropriate repository read permissions
+    - Check that repository name includes owner (e.g., owner/repo)
+    - For GitHub, use Personal Access Token (classic) with `repo` scope
+  </Accordion>
+  
+  <Accordion title="Theme not appearing in Shopify admin">
+    - Wait a few minutes for Shopify to process the upload
+    - Refresh the Themes page in Shopify admin
+    - Check for API errors in server logs
+    - Verify API permissions include theme write access
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<Card title="Backup First" icon="archive">
+  Always duplicate your current theme before publishing a new one to avoid data loss.
+</Card>
+
+<Card title="Test Thoroughly" icon="check-square">
+  Preview and test all pages before publishing the theme to production.
+</Card>
+
+<Card title="Version Control" icon="git-branch">
+  Use Git branches for theme development, staging, and production versions.
+</Card>
+
+<Card title="Staged Rollout" icon="zap">
+  Install new versions as unpublished themes and test before making them live.
+</Card>
+
+<Card title="Monitor Performance" icon="activity">
+  Check theme performance metrics after installation using Shopify's analytics.
+</Card>
+
+## Related Features
+
+- [Configuration](/configuration/store-settings) - Configure app settings before installing theme
+- [AI Configuration](/features/ai-configuration) - Set up AI assistant to work with the theme

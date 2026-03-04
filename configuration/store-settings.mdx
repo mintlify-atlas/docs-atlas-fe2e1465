@@ -1,0 +1,288 @@
+---
+title: Store Settings
+description: Configure your store's integration settings, API keys, and platform credentials
+---
+
+## Overview
+
+Store settings allow you to configure essential integration parameters for your Shopify store. This includes API keys for Ecomdrop and Dropi platforms, enabling automated workflows and order synchronization.
+
+## Configuration Sections
+
+The configuration page is organized into four main tabs:
+
+<Steps>
+  <Step title="Ecomdrop Integration">
+    Configure your Ecomdrop API key and select flows for automation
+  </Step>
+  <Step title="Dropi Integration">
+    Set up Dropi credentials for order fulfillment synchronization
+  </Step>
+  <Step title="AI Assistant">
+    Customize your AI assistant for customer interactions
+  </Step>
+  <Step title="Status">
+    View the current status of all your integrations
+  </Step>
+</Steps>
+
+## Database Schema
+
+All store configuration is stored in the `ShopConfiguration` model:
+
+<ParamField path="id" type="string" required>
+  Unique identifier (UUID)
+</ParamField>
+
+<ParamField path="shop" type="string" required>
+  Shop domain (unique, max 255 characters)
+</ParamField>
+
+<ParamField path="ecomdropApiKey" type="string">
+  Ecomdrop API authentication key (encrypted)
+</ParamField>
+
+<ParamField path="nuevoPedidoFlowId" type="string">
+  Flow ID for new order events (max 255 characters)
+</ParamField>
+
+<ParamField path="carritoAbandonadoFlowId" type="string">
+  Flow ID for abandoned cart events (max 255 characters)
+</ParamField>
+
+<ParamField path="dropiStoreName" type="string">
+  Dropi store identifier (max 255 characters)
+</ParamField>
+
+<ParamField path="dropiCountry" type="string">
+  Dropi operation country code (max 10 characters)
+</ParamField>
+
+<ParamField path="dropiToken" type="string">
+  Dropi API authentication token (encrypted)
+</ParamField>
+
+<ParamField path="createdAt" type="datetime">
+  Configuration creation timestamp
+</ParamField>
+
+<ParamField path="updatedAt" type="datetime">
+  Last update timestamp
+</ParamField>
+
+## Configuring Ecomdrop API Key
+
+<Steps>
+  <Step title="Obtain API Key">
+    Get your Ecomdrop API key from the [Ecomdrop panel](https://panel.ecomdrop.app)
+  </Step>
+  
+  <Step title="Navigate to Configuration">
+    In your Shopify app, go to the **Configuration** page and select the **Ecomdrop** tab
+  </Step>
+  
+  <Step title="Enter API Key">
+    Paste your API key in the "Clave API de Ecomdrop" field
+    
+    <Note>
+      Your API key is stored securely and encrypted. It's never displayed in plain text after saving.
+    </Note>
+  </Step>
+  
+  <Step title="Save Configuration">
+    Click "Conectar Ecomdrop IA y Refrescar Flujos" to save and load available flows
+  </Step>
+</Steps>
+
+### API Key Security
+
+<Warning>
+  Never share your API key publicly. The app stores it encrypted in the database with the following security measures:
+  - Encrypted at rest in the database
+  - Transmitted over HTTPS only
+  - Not exposed in logs or client-side code
+  - Unique per store
+</Warning>
+
+## Configuring Dropi Integration
+
+Dropi integration enables automatic order synchronization with the Dropi fulfillment platform.
+
+<Steps>
+  <Step title="Prerequisites">
+    Ensure you have configured your Ecomdrop API key first
+    
+    <Info>
+      Dropi configuration requires an active Ecomdrop API key to sync settings.
+    </Info>
+  </Step>
+  
+  <Step title="Enter Store Name">
+    Navigate to the **Dropi** tab and enter your Dropi store name
+  </Step>
+  
+  <Step title="Select Country">
+    Choose your operation country from the dropdown:
+    
+    - Colombia (CO)
+    - Ecuador (EC)
+    - Chile (CL)
+    - Guatemala (GT)
+    - México (MX)
+    - Panamá (PA)
+    - Perú (PE)
+    - Paraguay (PY)
+  </Step>
+  
+  <Step title="Enter Dropi Token">
+    Input your Dropi API token in the secure field
+    
+    <Note>
+      The token is masked after saving. Click "Editar Token" to update it later.
+    </Note>
+  </Step>
+  
+  <Step title="Save Configuration">
+    Click "Guardar" to save your Dropi settings
+  </Step>
+</Steps>
+
+### Country-Specific Field Mapping
+
+The app automatically maps your country selection to the correct Dropi bot field:
+
+| Country | Code | Field ID |
+|---------|------|----------|
+| Colombia | CO | 640597 |
+| Ecuador | EC | 805359 |
+| Chile | CL | 665134 |
+| Guatemala | GT | 747995 |
+| México | MX | 641097 |
+| Panamá | PA | 742965 |
+| Perú | PE | 142979 |
+| Paraguay | PY | 240677 |
+
+## Updating Configuration
+
+You can update any configuration setting at any time:
+
+<Accordion title="Updating Ecomdrop API Key">
+  1. Go to Configuration > Ecomdrop tab
+  2. Enter the new API key in the input field
+  3. Click "Actualizar Conexión y Refrescar Flujos"
+  4. The system will reload available flows automatically
+</Accordion>
+
+<Accordion title="Editing Dropi Token">
+  1. Go to Configuration > Dropi tab
+  2. Click "Editar Token" next to the masked token
+  3. Enter the new token
+  4. Click "Guardar Cambios" or "Cancelar" to abort
+  
+  <Warning>
+    You must enter a complete token when updating. The field cannot be empty.
+  </Warning>
+</Accordion>
+
+<Accordion title="Changing Flow Assignments">
+  1. Navigate to Configuration > Ecomdrop tab
+  2. Scroll to "Configuración de Flujos"
+  3. Select different flows from the dropdowns
+  4. Click "Guardar Configuración de Flujos"
+  
+  <Info>
+    Flow changes take effect immediately for new events.
+  </Info>
+</Accordion>
+
+## Viewing Configuration Status
+
+The **Status** tab provides an overview of all your integrations:
+
+### Status Indicators
+
+<AccordionGroup>
+  <Accordion title="Ecomdrop Status">
+    - **Configured**: Shows green badge with last update timestamp
+    - **Not Configured**: Shows gray badge with setup instructions
+  </Accordion>
+  
+  <Accordion title="Dropi Status">
+    - **Configured**: Displays store name and country
+    - **Not Configured**: Shows prompt to configure in Dropi tab
+  </Accordion>
+  
+  <Accordion title="Active Flows">
+    Displays which flows are assigned to:
+    - **Nuevo Pedido** (New Orders)
+    - **Carrito Abandonado** (Abandoned Carts)
+  </Accordion>
+</AccordionGroup>
+
+## API Endpoints
+
+### Save Ecomdrop API Key
+
+```typescript
+POST /app/configuration
+Content-Type: application/x-www-form-urlencoded
+
+intent=save_api_key
+apiKey=your_api_key_here
+```
+
+### Save Dropi Configuration
+
+```typescript
+POST /api/integrations/dropi/save
+Content-Type: application/x-www-form-urlencoded
+
+store_name=my_store
+country=CO
+dropi_token=your_token_here
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="API Key Not Working">
+    **Symptoms**: Flows don't load after entering API key
+    
+    **Solutions**:
+    1. Verify the API key is correct in the Ecomdrop panel
+    2. Check that your Ecomdrop account has active flows
+    3. Review browser console for error messages
+    4. Try clearing the flows cache by re-saving the API key
+  </Accordion>
+  
+  <Accordion title="Dropi Configuration Fails">
+    **Symptoms**: Error message when saving Dropi settings
+    
+    **Solutions**:
+    1. Ensure Ecomdrop API key is configured first
+    2. Verify all required fields are filled
+    3. Check that the Dropi token is valid
+    4. Confirm the country code matches your Dropi account
+  </Accordion>
+  
+  <Accordion title="Changes Not Saving">
+    **Symptoms**: Configuration reverts after page reload
+    
+    **Solutions**:
+    1. Check for JavaScript errors in browser console
+    2. Verify network connectivity
+    3. Ensure you have proper permissions in Shopify
+    4. Try refreshing the page and reconfiguring
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Flow Management" icon="diagram-project" href="/configuration/flow-management">
+    Learn how to set up and manage Ecomdrop flows
+  </Card>
+  <Card title="Webhooks" icon="webhook" href="/configuration/webhooks">
+    Understand webhook integration and event handling
+  </Card>
+</CardGroup>

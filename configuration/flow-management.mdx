@@ -1,0 +1,444 @@
+---
+title: Flow Management
+description: Configure and manage Ecomdrop flows for automating customer interactions on order and cart events
+---
+
+## Overview
+
+Flows are automated workflows in Ecomdrop that trigger customer communications based on Shopify events. The connector supports two primary flow types:
+
+1. **Nuevo Pedido** (New Order) - Triggered when a customer completes a purchase
+2. **Carrito Abandonado** (Abandoned Cart) - Triggered when a draft order is created
+
+## Prerequisites
+
+<Note>
+  Before configuring flows, you must set up your Ecomdrop API key in the store settings.
+</Note>
+
+<Steps>
+  <Step title="Configure API Key">
+    Navigate to Configuration > Ecomdrop and enter your API key
+  </Step>
+  
+  <Step title="Verify Flow Loading">
+    After saving, the app automatically fetches available flows from your Ecomdrop account
+  </Step>
+  
+  <Step title="Assign Flows">
+    Select which flows should trigger for each event type
+  </Step>
+</Steps>
+
+## Flow Types
+
+### New Order Flow (Nuevo Pedido)
+
+This flow triggers when a customer completes an order in your Shopify store.
+
+**Webhook Trigger**: `ORDERS_CREATE` (GraphQL)
+
+**Event Data Sent**:
+
+<ParamField path="orderId" type="string" required>
+  Shopify order GID (e.g., `gid://shopify/Order/123456`)
+</ParamField>
+
+<ParamField path="orderName" type="string" required>
+  Order display name (e.g., `#1001`)
+</ParamField>
+
+<ParamField path="totalPrice" type="string">
+  Order total price (decimal string)
+</ParamField>
+
+<ParamField path="currency" type="string">
+  Currency code (e.g., `USD`, `COP`)
+</ParamField>
+
+<ParamField path="customer" type="object">
+  Customer information including:
+  - `id` - Customer ID
+  - `email` - Customer email
+  - `firstName` - First name
+  - `lastName` - Last name
+  - `phone` - Phone number
+</ParamField>
+
+<ParamField path="lineItems" type="array">
+  Array of ordered products with:
+  - `title` - Product name
+  - `quantity` - Quantity ordered
+  - `price` - Unit price
+  - `sku` - Product SKU
+  - `variantId` - Variant identifier
+</ParamField>
+
+<ParamField path="shippingAddress" type="object">
+  Delivery address details
+</ParamField>
+
+<ParamField path="eventType" type="string">
+  Always `"order_created"` for new orders
+</ParamField>
+
+### Abandoned Cart Flow (Carrito Abandonado)
+
+This flow triggers when a draft order is created, which can represent an abandoned cart.
+
+**Webhook Trigger**: `DRAFT_ORDERS_CREATE` (GraphQL)
+
+**Event Data Sent**:
+
+<ParamField path="draftOrderId" type="string" required>
+  Shopify draft order GID
+</ParamField>
+
+<ParamField path="draftOrderName" type="string" required>
+  Draft order name/number
+</ParamField>
+
+<ParamField path="totalPrice" type="string">
+  Cart total value
+</ParamField>
+
+<ParamField path="currencyCode" type="string">
+  Currency code
+</ParamField>
+
+<ParamField path="customer" type="object">
+  Customer information (if available)
+</ParamField>
+
+<ParamField path="lineItems" type="array">
+  Products in the cart
+</ParamField>
+
+<ParamField path="email" type="string">
+  Customer email for recovery
+</ParamField>
+
+<ParamField path="eventType" type="string">
+  Always `"draft_order_created"` for abandoned carts
+</ParamField>
+
+## Setting Up Flows
+
+### Step 1: Access Flow Configuration
+
+<Steps>
+  <Step title="Navigate to Configuration">
+    Open the Configuration page in your Shopify app admin
+  </Step>
+  
+  <Step title="Select Ecomdrop Tab">
+    Click on the "Ecomdrop" tab in the configuration interface
+  </Step>
+  
+  <Step title="Scroll to Flow Configuration">
+    Find the "Configuración de Flujos" section (appears only after API key is configured)
+  </Step>
+</Steps>
+
+### Step 2: Assign Flow for New Orders
+
+<Steps>
+  <Step title="Select Flow">
+    In the "Nuevo Pedido" dropdown, choose the flow you want to trigger when orders are created
+  </Step>
+  
+  <Step title="Review Flow">
+    Ensure the selected flow is designed for order confirmations or post-purchase communications
+  </Step>
+  
+  <Step title="Save">
+    The assignment is saved when you click "Guardar Configuración de Flujos"
+  </Step>
+</Steps>
+
+<Info>
+  Only flows available in your Ecomdrop account will appear in the dropdown.
+</Info>
+
+### Step 3: Assign Flow for Abandoned Carts
+
+<Steps>
+  <Step title="Select Flow">
+    In the "Carrito Abandonado" dropdown, choose the appropriate recovery flow
+  </Step>
+  
+  <Step title="Verify Flow Logic">
+    Make sure the flow contains cart recovery messaging and incentives
+  </Step>
+  
+  <Step title="Save Configuration">
+    Click the save button to activate the abandoned cart flow
+  </Step>
+</Steps>
+
+<Warning>
+  Draft order webhooks trigger for ALL draft orders, not just abandoned carts. Design your flows accordingly.
+</Warning>
+
+## Flow Data Structure
+
+Flows are retrieved from Ecomdrop with the following structure:
+
+```typescript
+interface EcomdropFlow {
+  id: string;              // Unique flow identifier
+  name: string;            // Display name
+  description?: string;    // Optional description
+  status?: string;         // Flow status (active/inactive)
+  createdAt?: string;      // Creation timestamp
+  updatedAt?: string;      // Last update timestamp
+}
+```
+
+## Flow Caching
+
+To optimize performance and reduce API calls:
+
+<Accordion title="Cache Behavior">
+  - **Cache Duration**: 60 seconds (1 minute)
+  - **Storage**: In-memory cache keyed by API key
+  - **Cache Invalidation**: Automatic on API key update
+  - **Manual Refresh**: Click "Actualizar Conexión y Refrescar Flujos"
+</Accordion>
+
+### Clearing Flow Cache
+
+The cache is automatically cleared when:
+
+1. You update your Ecomdrop API key
+2. You click the "Sync Flows" button (if available)
+3. The cache expires after 60 seconds
+
+**Manual Cache Clear**:
+
+```typescript
+POST /app/configuration
+intent=sync_flows
+```
+
+## Testing Flows
+
+### Testing New Order Flow
+
+<Steps>
+  <Step title="Create Test Order">
+    In your Shopify admin, create a test order:
+    - Go to Orders > Create order
+    - Add products and customer information
+    - Complete the order
+  </Step>
+  
+  <Step title="Monitor Webhook">
+    Check your app logs for webhook processing:
+    
+    ```
+    📦 Received ORDERS_CREATE webhook for your-store.myshopify.com
+    🔍 Looking for configuration with shop: your-store.myshopify.com
+    ✅ API Key exists: Yes
+    ✅ Flow ID exists: Yes
+    🚀 Triggering Ecomdrop flow <flow-id> for order #1001
+    ✅ Successfully triggered flow for order #1001
+    ```
+  </Step>
+  
+  <Step title="Verify in Ecomdrop">
+    Log into your Ecomdrop panel and verify the flow was triggered with the correct data
+  </Step>
+</Steps>
+
+### Testing Abandoned Cart Flow
+
+<Steps>
+  <Step title="Create Draft Order">
+    In Shopify admin:
+    - Go to Orders > Drafts
+    - Create a new draft order
+    - Add products and customer email
+    - Save the draft (don't send invoice)
+  </Step>
+  
+  <Step title="Check Logs">
+    Monitor for draft order webhook:
+    
+    ```
+    📝 Received DRAFT_ORDERS_CREATE webhook for your-store.myshopify.com
+    🚀 Triggering Ecomdrop flow <flow-id> for draft order #D1
+    ✅ Successfully triggered flow for draft order #D1
+    ```
+  </Step>
+  
+  <Step title="Confirm Execution">
+    Check Ecomdrop panel for flow execution and customer communication
+  </Step>
+</Steps>
+
+<Note>
+  Webhook processing happens asynchronously. Allow a few seconds for the flow to trigger.
+</Note>
+
+## Flow Triggering Logic
+
+The flow triggering process follows these steps:
+
+<Steps>
+  <Step title="Webhook Receipt">
+    Shopify sends webhook to `/webhooks/orders/create` or `/webhooks/draft_orders/create`
+  </Step>
+  
+  <Step title="Configuration Lookup">
+    App retrieves store configuration from database using shop domain
+  </Step>
+  
+  <Step title="Validation">
+    Checks for:
+    - Valid Ecomdrop API key
+    - Assigned flow ID for the event type
+  </Step>
+  
+  <Step title="Data Formatting">
+    Transforms Shopify webhook payload into Ecomdrop-compatible format
+  </Step>
+  
+  <Step title="API Call">
+    Posts to Ecomdrop API: `POST /api/flows/{flowId}/trigger`
+  </Step>
+  
+  <Step title="Response Handling">
+    Logs success/failure and updates order tags if needed
+  </Step>
+</Steps>
+
+## Advanced Configuration
+
+### Callback URLs
+
+For order flows, the app can configure a callback URL for Ecomdrop to notify when processing completes:
+
+```typescript
+{
+  callbackUrl: "https://your-app.com/api/ecomdrop/callback",
+  callbackApiKey: "your_api_key"
+}
+```
+
+<Info>
+  Callback functionality requires `SHOPIFY_APP_URL` environment variable to be set.
+</Info>
+
+### Order Tagging
+
+When a flow fails to trigger, the app automatically tags the order with `ecomdrop-error` for easy identification and reprocessing.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Flows Not Loading">
+    **Problem**: Dropdown is empty after entering API key
+    
+    **Solutions**:
+    1. Verify API key is correct
+    2. Check Ecomdrop account has active flows
+    3. Review console logs for API errors
+    4. Wait 60 seconds and refresh (cache expiry)
+    5. Click sync/refresh flows button
+  </Accordion>
+  
+  <Accordion title="Flow Not Triggering on Order">
+    **Problem**: Order created but flow doesn't execute
+    
+    **Solutions**:
+    1. Check Configuration > Status tab to verify flow assignment
+    2. Review app logs for webhook processing
+    3. Verify webhooks are registered in Shopify settings
+    4. Ensure the flow is active in Ecomdrop
+    5. Check for errors in Ecomdrop panel logs
+  </Accordion>
+  
+  <Accordion title="Wrong Data in Flow">
+    **Problem**: Flow receives incorrect or missing data
+    
+    **Solutions**:
+    1. Check webhook payload in app logs
+    2. Verify GraphQL webhook format compatibility
+    3. Ensure customer information is complete in Shopify
+    4. Review data transformation in `webhooks.orders.create.tsx`
+  </Accordion>
+  
+  <Accordion title="Multiple Flow Executions">
+    **Problem**: Flow triggers multiple times for one order
+    
+    **Solutions**:
+    1. Check Shopify webhook history for duplicates
+    2. Verify app deployment (avoid multiple instances)
+    3. Review Ecomdrop flow configuration for loops
+    4. Check for manual flow triggers in Ecomdrop panel
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Test Before Production" icon="flask">
+    Always test flows with draft orders before going live with customer orders
+  </Card>
+  
+  <Card title="Monitor Logs" icon="chart-line">
+    Regularly check app logs to ensure webhooks are processing correctly
+  </Card>
+  
+  <Card title="Design for Failures" icon="triangle-exclamation">
+    Build flows that handle missing or incomplete customer data gracefully
+  </Card>
+  
+  <Card title="Use Clear Names" icon="tag">
+    Name your Ecomdrop flows clearly to distinguish between order types and purposes
+  </Card>
+</CardGroup>
+
+## API Reference
+
+### Get Flows
+
+```typescript
+GET https://panel.ecomdrop.app/api/accounts/flows
+Headers:
+  X-ACCESS-TOKEN: your_api_key
+```
+
+**Response**:
+```json
+[
+  {
+    "id": "flow_123",
+    "name": "Order Confirmation Flow",
+    "status": "active"
+  }
+]
+```
+
+### Trigger Flow
+
+```typescript
+POST https://panel.ecomdrop.app/api/flows/{flowId}/trigger
+Headers:
+  X-ACCESS-TOKEN: your_api_key
+  Content-Type: application/json
+
+Body: { /* order or draft order data */ }
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Store Settings" icon="gear" href="/configuration/store-settings">
+    Configure your API keys and integration credentials
+  </Card>
+  <Card title="Webhooks" icon="webhook" href="/configuration/webhooks">
+    Learn about webhook endpoints and event handling
+  </Card>
+</CardGroup>

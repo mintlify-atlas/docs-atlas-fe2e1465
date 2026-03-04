@@ -1,0 +1,554 @@
+---
+title: Shopify Integration
+description: Understanding the Shopify app installation, authentication, and API access for the Ecomdrop IA Connector
+---
+
+## Overview
+
+The Ecomdrop IA Connector is a Shopify App Store app that integrates seamlessly with your Shopify store. It uses Shopify's modern App Bridge and OAuth 2.0 for secure authentication and access to your store data.
+
+## Installation
+
+### Installing the App
+
+<Steps>
+  <Step title="Find the App">
+    Navigate to the Shopify App Store and search for "Ecomdrop IA Connector"
+  </Step>
+  
+  <Step title="Click Install">
+    Click the "Add app" button on the app listing page
+  </Step>
+  
+  <Step title="Review Permissions">
+    Review the requested permissions and scopes
+  </Step>
+  
+  <Step title="Approve Installation">
+    Click "Install app" to approve and install
+  </Step>
+  
+  <Step title="Complete Setup">
+    You'll be redirected to the app dashboard to complete initial configuration
+  </Step>
+</Steps>
+
+<Note>
+The app is distributed through Shopify App Store. During development, you can install it via a custom development link provided by your developer.
+</Note>
+
+## OAuth Authentication Flow
+
+The app uses Shopify's OAuth 2.0 flow for secure authentication:
+
+<Steps>
+  <Step title="Initial Request">
+    When you visit the app, Shopify redirects to the OAuth authorization endpoint
+  </Step>
+  
+  <Step title="User Consent">
+    You review and approve the requested API scopes
+  </Step>
+  
+  <Step title="Authorization Code">
+    Shopify redirects back with an authorization code
+  </Step>
+  
+  <Step title="Token Exchange">
+    The app exchanges the code for an access token
+  </Step>
+  
+  <Step title="Session Created">
+    An offline access token is stored for ongoing API access
+  </Step>
+</Steps>
+
+### Authentication Endpoints
+
+```typescript
+// OAuth start
+GET /auth/login
+
+// OAuth callback
+GET /auth/callback
+
+// Session validation
+GET /auth
+```
+
+## API Scopes
+
+The app requests these API scopes to function properly:
+
+### Read Scopes
+
+<ParamField path="read_products" type="scope">
+  Read product data, variants, and inventory levels
+</ParamField>
+
+<ParamField path="read_orders" type="scope">
+  Access order information for Ecomdrop workflow triggers
+</ParamField>
+
+<ParamField path="read_customers" type="scope">
+  Read customer data included in orders (requires app approval)
+</ParamField>
+
+<ParamField path="read_themes" type="scope">
+  Access theme information for theme management features
+</ParamField>
+
+### Write Scopes
+
+<ParamField path="write_products" type="scope">
+  Create and update products when importing from Dropi
+</ParamField>
+
+<ParamField path="write_orders" type="scope">
+  Update order tags based on Ecomdrop processing status
+</ParamField>
+
+<ParamField path="write_themes" type="scope">
+  Install and configure themes programmatically
+</ParamField>
+
+<Warning>
+Some scopes (like `read_customers`) require Shopify's approval for protected customer data access. The app will work with limited functionality until approval is granted.
+</Warning>
+
+## Shopify Admin API
+
+The app uses Shopify Admin API version **2025-10** (October 2025):
+
+```typescript
+const apiVersion = "2025-10";
+const endpoint = `https://{shop}/admin/api/2025-10/graphql.json`;
+```
+
+### GraphQL API Access
+
+Most operations use GraphQL for efficiency:
+
+<CodeGroup>
+```typescript Query Products
+const response = await admin.graphql(`
+  query GetProducts($first: Int!) {
+    products(first: $first) {
+      edges {
+        node {
+          id
+          title
+          description
+          variants(first: 10) {
+            edges {
+              node {
+                id
+                sku
+                price
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+`, {
+  variables: { first: 50 }
+});
+```
+
+```typescript Update Order Tags
+const response = await admin.graphql(`
+  mutation AddOrderTags($id: ID!, $tags: [String!]!) {
+    tagsAdd(id: $id, tags: $tags) {
+      node {
+        id
+      }
+      userErrors {
+        field
+        message
+      }
+    }
+  }
+`, {
+  variables: {
+    id: "gid://shopify/Order/123",
+    tags: ["ecomdrop-processed"]
+  }
+});
+```
+
+```typescript Create Product
+const response = await admin.graphql(`
+  mutation CreateProduct($input: ProductInput!) {
+    productCreate(input: $input) {
+      product {
+        id
+        title
+        variants(first: 10) {
+          edges {
+            node {
+              id
+              sku
+            }
+          }
+        }
+      }
+      userErrors {
+        field
+        message
+      }
+    }
+  }
+`, {
+  variables: {
+    input: {
+      title: "New Product",
+      descriptionHtml: "<p>Product description</p>",
+      vendor: "Dropi",
+      productType: "Electronics"
+    }
+  }
+});
+```
+</CodeGroup>
+
+### Authenticated Requests
+
+The app authenticates all admin requests:
+
+```typescript
+import { authenticate } from "../shopify.server";
+
+export async function loader({ request }: LoaderFunctionArgs) {
+  // Authenticate and get admin API client
+  const { admin, session } = await authenticate.admin(request);
+  
+  // Make authenticated requests
+  const response = await admin.graphql(`{ shop { name } }`);
+  const data = await response.json();
+  
+  return data;
+}
+```
+
+## Webhooks
+
+The app registers webhooks to receive real-time notifications:
+
+### Registered Webhooks
+
+<ParamField path="ORDERS_CREATE" type="webhook">
+  Triggered when a new order is created. Used to send order data to Ecomdrop flows.
+  
+  **Endpoint**: `/webhooks/orders/create`
+</ParamField>
+
+<ParamField path="CHECKOUTS_CREATE" type="webhook">
+  Triggered when a checkout is created (abandoned cart). Can trigger Ecomdrop flows.
+  
+  **Endpoint**: `/webhooks/checkouts/create`
+</ParamField>
+
+<ParamField path="APP_UNINSTALLED" type="webhook">
+  Triggered when the app is uninstalled. Used for cleanup.
+  
+  **Endpoint**: `/webhooks/app/uninstalled`
+</ParamField>
+
+<ParamField path="APP_SCOPES_UPDATE" type="webhook">
+  Triggered when app scopes are updated. Used to refresh permissions.
+  
+  **Endpoint**: `/webhooks/app/scopes_update`
+</ParamField>
+
+### Webhook Authentication
+
+Webhooks are authenticated using Shopify's signature verification:
+
+```typescript
+import { authenticate } from "../shopify.server";
+
+export const action = async ({ request }: ActionFunctionArgs) => {
+  // Shopify verifies the webhook signature automatically
+  const { shop, topic, payload } = await authenticate.webhook(request);
+  
+  console.log(`Received ${topic} webhook for ${shop}`);
+  
+  // Process webhook payload
+  // ...
+  
+  return new Response("OK", { status: 200 });
+};
+```
+
+### Webhook Payload Format
+
+Webhooks use GraphQL format:
+
+<CodeGroup>
+```json ORDERS_CREATE Payload
+{
+  "order": {
+    "id": "gid://shopify/Order/1234567890",
+    "name": "#1001",
+    "createdAt": "2024-03-04T12:00:00Z",
+    "totalPriceSet": {
+      "shopMoney": {
+        "amount": "99.99",
+        "currencyCode": "USD"
+      }
+    },
+    "customer": {
+      "id": "gid://shopify/Customer/123",
+      "email": "customer@example.com",
+      "firstName": "John",
+      "lastName": "Doe"
+    },
+    "lineItems": {
+      "edges": [
+        {
+          "node": {
+            "id": "gid://shopify/LineItem/456",
+            "title": "Product Name",
+            "quantity": 2,
+            "variant": {
+              "id": "gid://shopify/ProductVariant/789",
+              "sku": "PROD-001"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+</CodeGroup>
+
+<Note>
+Webhooks must respond within 5 seconds. Long-running tasks should be queued for background processing.
+</Note>
+
+## Session Storage
+
+Sessions are stored in MySQL using Prisma:
+
+```prisma
+model Session {
+  id          String    @id
+  shop        String
+  state       String
+  isOnline    Boolean   @default(false)
+  scope       String?
+  expires     DateTime?
+  accessToken String
+  userId      BigInt?
+}
+```
+
+### Session Types
+
+**Offline Sessions**
+- Format: `offline_{shop}`
+- Long-lived access tokens
+- Used for background tasks and webhooks
+- Never expire unless app is uninstalled
+
+**Online Sessions**
+- Format: `{shop}_{userId}_{sessionId}`
+- Short-lived, user-specific
+- Used for user-initiated actions
+- Expire after 24 hours
+
+## App Bridge Integration
+
+The app uses Shopify App Bridge for embedded app functionality:
+
+```typescript
+import { AppProvider } from "@shopify/shopify-app-react-router";
+
+export default function App() {
+  return (
+    <AppProvider
+      config={{
+        apiKey: process.env.SHOPIFY_API_KEY!,
+        host: shopify.config.host,
+        forceRedirect: true
+      }}
+    >
+      {/* Your app content */}
+    </AppProvider>
+  );
+}
+```
+
+### App Bridge Features
+
+- **Navigation** - Seamless navigation within Shopify Admin
+- **Toast Messages** - Native Shopify toast notifications
+- **Modal Dialogs** - Shopify-styled modals
+- **Title Bar** - Custom app title bar with actions
+- **Loading** - App loading states
+
+## Database Schema
+
+The app stores configuration in MySQL:
+
+```prisma
+model ShopConfiguration {
+  id                    Int       @id @default(autoincrement())
+  shop                  String    @unique
+  ecomdropApiKey        String?
+  nuevoPedidoFlowId     String?
+  carritoAbandonadoFlowId String?
+  dropiStoreName        String?
+  dropiCountry          String?
+  dropiToken            String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+```
+
+## Testing Webhooks
+
+During development, test webhooks using Shopify CLI:
+
+```bash
+# Trigger a test ORDERS_CREATE webhook
+shopify webhook trigger orders/create
+
+# Trigger a test CHECKOUTS_CREATE webhook
+shopify webhook trigger checkouts/create
+```
+
+<Note>
+Test webhooks use sample data. Use real orders from your development store for full testing.
+</Note>
+
+## App Distribution
+
+The app is configured for **App Store distribution**:
+
+```typescript
+import { AppDistribution } from "@shopify/shopify-app-react-router";
+
+const shopify = shopifyApp({
+  distribution: AppDistribution.AppStore,
+  // ... other config
+});
+```
+
+This means:
+- Available to all Shopify merchants
+- Subject to Shopify's app review process
+- Requires compliance with app requirements
+- May require approval for protected scopes
+
+## Rate Limits
+
+Shopify enforces API rate limits:
+
+### REST API Limits
+- **Standard**: 2 requests/second
+- **Plus**: 4 requests/second
+
+### GraphQL Limits
+- **Points-based system**: 50 points/second
+- Queries cost different points based on complexity
+- The app automatically retries rate-limited requests
+
+<Warning>
+Exceeding rate limits results in `429 Too Many Requests` errors. The app handles these gracefully with exponential backoff.
+</Warning>
+
+## Data Privacy
+
+The app complies with Shopify's data requirements:
+
+1. **Customer Data** - Protected and requires explicit approval
+2. **GDPR Compliance** - Handles data deletion requests
+3. **Data Retention** - Stores only necessary data
+4. **Encryption** - Sensitive data encrypted at rest
+
+### Privacy Webhooks
+
+Shopify may send privacy-related webhooks:
+
+- `customers/data_request` - Customer data access request
+- `customers/redact` - Customer data deletion request
+- `shop/redact` - Store data deletion (after uninstall)
+
+<Note>
+Implement handlers for privacy webhooks to comply with GDPR and data protection regulations.
+</Note>
+
+## Troubleshooting
+
+<Accordion title="App won't install">
+  **Possible Causes**:
+  - Invalid API credentials
+  - Incorrect app URL
+  - Development store expired
+  
+  **Solutions**:
+  1. Verify `SHOPIFY_API_KEY` and `SHOPIFY_API_SECRET` in `.env`
+  2. Check `SHOPIFY_APP_URL` is accessible
+  3. Ensure development store is active
+</Accordion>
+
+<Accordion title="Session errors after install">
+  **Cause**: Database not initialized or session storage issue
+  
+  **Solution**:
+  ```bash
+  npx prisma migrate deploy
+  npx prisma generate
+  ```
+</Accordion>
+
+<Accordion title="Webhooks not received">
+  **Possible Causes**:
+  - Webhook not registered
+  - App URL not accessible
+  - Ngrok tunnel expired (development)
+  
+  **Solutions**:
+  1. Check webhook registration in Shopify Partners dashboard
+  2. Verify app is accessible from Shopify servers
+  3. Restart `shopify app dev` to refresh tunnel
+</Accordion>
+
+<Accordion title="Protected data access denied">
+  **Cause**: App not approved for protected customer data
+  
+  **Solution**:
+  Submit app for review in Shopify Partners dashboard. Some features will be limited until approval.
+</Accordion>
+
+## Code Reference
+
+Shopify integration code locations:
+
+- App Configuration: `app/shopify.server.ts:10`
+- OAuth Handler: `app/routes/auth.$.tsx:6`
+- Webhook Handlers: `app/routes/webhooks.*.tsx`
+- Admin API Client: Available via `authenticate.admin()`
+
+## Best Practices
+
+1. **Use Offline Tokens** - For background tasks and webhooks
+2. **Handle Rate Limits** - Implement exponential backoff
+3. **Validate Webhooks** - Always verify webhook signatures
+4. **GraphQL over REST** - More efficient for complex queries
+5. **Cache Sessions** - Reduce database lookups
+6. **Error Handling** - Gracefully handle API errors
+7. **Monitor Usage** - Track API call volume and limits
+
+## Support
+
+For Shopify-specific issues:
+
+1. **Shopify Partners Support** - For app installation and configuration issues
+2. **Shopify Dev Forums** - Community help with API and integration questions
+3. **App Logs** - Check server logs for detailed error messages
+4. **Shopify Status** - Check [status.shopify.com](https://status.shopify.com) for API outages

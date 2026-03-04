@@ -1,0 +1,355 @@
+---
+title: "Webhooks API"
+description: "Shopify webhook endpoints for order and app lifecycle events"
+---
+
+The Webhooks API handles incoming webhook events from Shopify. These endpoints are automatically called by Shopify when certain events occur.
+
+<Warning>
+  These endpoints are designed to be called by Shopify only. Do not call them directly from your application.
+</Warning>
+
+## Order Created Webhook
+
+Triggered when a new order is created in Shopify. Sends order data to Ecomdrop for processing.
+
+<CodeGroup>
+```http POST
+POST /webhooks/orders/create
+```
+</CodeGroup>
+
+### Webhook Topic
+
+`ORDERS_CREATE` (GraphQL API webhook)
+
+### Payload
+
+Shopify sends order data in GraphQL format. The webhook handler processes:
+
+<Expandable title="Order Data Structure">
+  <ResponseField name="order.id" type="string">
+    Order ID (GraphQL format)
+  </ResponseField>
+  
+  <ResponseField name="order.name" type="string">
+    Order name (e.g., "#1001")
+  </ResponseField>
+  
+  <ResponseField name="order.createdAt" type="string">
+    Order creation timestamp
+  </ResponseField>
+  
+  <ResponseField name="order.totalPriceSet" type="object">
+    Total price with currency information
+  </ResponseField>
+  
+  <ResponseField name="order.lineItems" type="object">
+    Line items (GraphQL edges format)
+  </ResponseField>
+  
+  <ResponseField name="order.customer" type="object">
+    Customer information
+  </ResponseField>
+  
+  <ResponseField name="order.shippingAddress" type="object">
+    Shipping address
+  </ResponseField>
+  
+  <ResponseField name="order.billingAddress" type="object">
+    Billing address
+  </ResponseField>
+</Expandable>
+
+### Processing Flow
+
+1. **Configuration Check**: Verifies Ecomdrop API key and Flow ID are configured
+2. **Data Transformation**: Converts GraphQL order data to Ecomdrop format
+3. **Callback URL**: Adds callback URL for status notifications
+4. **Flow Trigger**: Sends data to Ecomdrop flow for processing
+5. **Tag Update**: Adds error tag if immediate failure occurs
+
+### Response
+
+<CodeGroup>
+```http 200 OK
+OK
+```
+</CodeGroup>
+
+<Note>
+  The webhook always returns 200 OK to prevent Shopify from retrying. Errors are logged but not returned to Shopify.
+</Note>
+
+### Ecomdrop Integration
+
+When configured, the webhook:
+
+1. Transforms order data to Ecomdrop-compatible format
+2. Includes callback URL: `{SHOPIFY_APP_URL}/api/ecomdrop/callback`
+3. Sends API key in payload for callback authentication
+4. Triggers the configured "Nuevo Pedido" flow ID
+5. Waits for async callback to update order tags
+
+### Order Data Sent to Ecomdrop
+
+<CodeGroup>
+```json Example Payload
+{
+  "orderId": "gid://shopify/Order/5678901234567890",
+  "orderName": "#1001",
+  "orderNumber": "1001",
+  "createdAt": "2026-03-04T10:30:00Z",
+  "totalPrice": "149.99",
+  "currency": "USD",
+  "financialStatus": "PAID",
+  "fulfillmentStatus": "UNFULFILLED",
+  "lineItems": [
+    {
+      "id": "gid://shopify/LineItem/123",
+      "name": "Premium Product",
+      "quantity": 2,
+      "price": "74.99",
+      "sku": "PROD-001",
+      "variantId": "gid://shopify/ProductVariant/456",
+      "productId": "gid://shopify/Product/789"
+    }
+  ],
+  "customer": {
+    "id": "gid://shopify/Customer/987654321",
+    "email": "customer@example.com",
+    "firstName": "John",
+    "lastName": "Doe",
+    "phone": "+1234567890"
+  },
+  "shippingAddress": {
+    "firstName": "John",
+    "lastName": "Doe",
+    "address1": "123 Main St",
+    "city": "New York",
+    "province": "NY",
+    "country": "United States",
+    "zip": "10001",
+    "phone": "+1234567890"
+  },
+  "shop": "mystore.myshopify.com",
+  "eventType": "order_created",
+  "callbackUrl": "https://your-app.com/api/ecomdrop/callback",
+  "callbackApiKey": "ecomdrop_api_key"
+}
+```
+</CodeGroup>
+
+---
+
+## Draft Order Created Webhook
+
+Triggered when a draft order (abandoned cart) is created in Shopify. Sends data to Ecomdrop for abandoned cart recovery flows.
+
+<CodeGroup>
+```http POST
+POST /webhooks/draft_orders/create
+```
+</CodeGroup>
+
+### Webhook Topic
+
+`DRAFT_ORDERS_CREATE` (GraphQL API webhook)
+
+### Payload
+
+Shopify sends draft order data in GraphQL format.
+
+<Expandable title="Draft Order Data Structure">
+  <ResponseField name="draftOrder.id" type="string">
+    Draft order ID
+  </ResponseField>
+  
+  <ResponseField name="draftOrder.name" type="string">
+    Draft order name
+  </ResponseField>
+  
+  <ResponseField name="draftOrder.createdAt" type="string">
+    Creation timestamp
+  </ResponseField>
+  
+  <ResponseField name="draftOrder.totalPrice" type="object">
+    Total price
+  </ResponseField>
+  
+  <ResponseField name="draftOrder.lineItems" type="object">
+    Cart items
+  </ResponseField>
+  
+  <ResponseField name="draftOrder.customer" type="object">
+    Customer information
+  </ResponseField>
+  
+  <ResponseField name="draftOrder.email" type="string">
+    Contact email
+  </ResponseField>
+</Expandable>
+
+### Processing Flow
+
+1. **Configuration Check**: Verifies "Carrito Abandonado" flow ID is configured
+2. **Data Transformation**: Converts draft order data to Ecomdrop format
+3. **Flow Trigger**: Sends to abandoned cart recovery flow
+
+### Response
+
+<CodeGroup>
+```http 200 OK
+OK
+```
+</CodeGroup>
+
+### Draft Order Data Sent to Ecomdrop
+
+<CodeGroup>
+```json Example Payload
+{
+  "draftOrderId": "gid://shopify/DraftOrder/1234567890",
+  "draftOrderName": "#D1",
+  "createdAt": "2026-03-04T10:30:00Z",
+  "totalPrice": "99.99",
+  "currencyCode": "USD",
+  "lineItems": [
+    {
+      "id": "gid://shopify/DraftOrderLineItem/123",
+      "title": "Product Name",
+      "quantity": 1,
+      "originalUnitPrice": "99.99",
+      "sku": "SKU-001"
+    }
+  ],
+  "customer": {
+    "id": "gid://shopify/Customer/987",
+    "email": "customer@example.com",
+    "firstName": "Jane",
+    "lastName": "Smith"
+  },
+  "email": "customer@example.com",
+  "shop": "mystore.myshopify.com",
+  "eventType": "draft_order_created"
+}
+```
+</CodeGroup>
+
+---
+
+## App Uninstalled Webhook
+
+Triggered when the app is uninstalled from a Shopify store. Cleans up all store data.
+
+<CodeGroup>
+```http POST
+POST /webhooks/app/uninstalled
+```
+</CodeGroup>
+
+### Webhook Topic
+
+`APP_UNINSTALLED`
+
+### Processing Flow
+
+1. **Session Cleanup**: Deletes all sessions for the shop
+2. **Configuration Cleanup**: Removes shop configuration
+3. **Product Associations**: Deletes all product associations
+4. **AI Configuration**: Removes AI settings
+
+### Response
+
+<CodeGroup>
+```http 200 OK
+```
+</CodeGroup>
+
+### Data Cleaned Up
+
+- All session records
+- Shop configuration (Ecomdrop/Dropi settings)
+- Product associations
+- AI configuration
+
+<Note>
+  This webhook ensures GDPR compliance by removing all shop data when the app is uninstalled.
+</Note>
+
+---
+
+## App Scopes Update Webhook
+
+Triggered when the app's permission scopes are updated in Shopify.
+
+<CodeGroup>
+```http POST
+POST /webhooks/app/scopes_update
+```
+</CodeGroup>
+
+### Webhook Topic
+
+`APP_SCOPES_UPDATE`
+
+### Payload
+
+<ParamField body="current" type="array">
+  Array of current permission scopes granted to the app
+</ParamField>
+
+### Processing Flow
+
+1. **Extract Scopes**: Gets current scopes from payload
+2. **Update Session**: Updates the session record with new scopes
+
+### Response
+
+<CodeGroup>
+```http 200 OK
+```
+</CodeGroup>
+
+### Example Payload
+
+<CodeGroup>
+```json
+{
+  "current": [
+    "read_products",
+    "write_products",
+    "read_orders",
+    "write_orders",
+    "read_customers"
+  ]
+}
+```
+</CodeGroup>
+
+<Note>
+  This webhook ensures the app's stored session data stays in sync with Shopify's current permissions.
+</Note>
+
+---
+
+## Webhook Configuration
+
+To set up these webhooks in your Shopify app:
+
+### Required Webhooks
+
+| Topic | Endpoint | Purpose |
+|-------|----------|----------|
+| `ORDERS_CREATE` | `/webhooks/orders/create` | New order processing |
+| `DRAFT_ORDERS_CREATE` | `/webhooks/draft_orders/create` | Abandoned cart recovery |
+| `APP_UNINSTALLED` | `/webhooks/app/uninstalled` | Data cleanup |
+| `APP_SCOPES_UPDATE` | `/webhooks/app/scopes_update` | Permission sync |
+
+### Webhook Format
+
+All webhooks use GraphQL format (not REST/JSON) for better data structure and type safety.
+
+### Error Handling
+
+All webhooks return 200 OK regardless of processing errors to prevent Shopify from retrying. Errors are logged internally for debugging.

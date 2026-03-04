@@ -1,0 +1,208 @@
+---
+title: 'Product Management'
+description: 'Import and sync products from Dropi to your Shopify store with customizable settings'
+---
+
+## Overview
+
+The Product Management feature enables you to seamlessly connect products from Dropi with your Shopify store. You can search, filter, and link Dropi products to existing Shopify products while controlling which product data to sync.
+
+## Finding Dropi Products
+
+<Steps>
+  <Step title="Access the Products Page">
+    Navigate to the **Products** tab in your Ecomdrop IA Connector dashboard. Ensure you have configured your Dropi integration first in the Configuration section.
+  </Step>
+  
+  <Step title="Search for Products">
+    Use the search bar to find products by:
+    - Product ID
+    - Product name
+    - SKU
+    
+    The search supports real-time filtering across your Dropi catalog.
+  </Step>
+  
+  <Step title="Apply Filters">
+    Toggle between product types:
+    - **Favorite Products** (default view)
+    - **Private Products** (your private inventory)
+    
+    <Note>
+      When searching with keywords, filters are disabled to show all matching results.
+    </Note>
+  </Step>
+</Steps>
+
+## Product Information
+
+Each product listing displays:
+
+<Tabs>
+  <Tab title="Basic Details">
+    - Product ID and SKU
+    - Product name and image
+    - Category tags
+    - Sale price and suggested retail price
+  </Tab>
+  
+  <Tab title="Inventory">
+    - Current stock levels
+    - Warehouse location
+    - Inventory source (warehouse or private)
+  </Tab>
+  
+  <Tab title="Pricing">
+    - Sale price from Dropi
+    - Suggested retail price
+    - Currency (typically COP for Colombian pesos)
+  </Tab>
+</Tabs>
+
+## Linking Products to Shopify
+
+<Steps>
+  <Step title="Select a Dropi Product">
+    Click the eye icon next to any Dropi product to open the association modal.
+  </Step>
+  
+  <Step title="Choose a Shopify Product">
+    Select an existing product from your Shopify store to link with the Dropi product. The app will load all available Shopify products when the modal opens.
+    
+    <Warning>
+      The app only supports linking to existing Shopify products, not creating new ones.
+    </Warning>
+  </Step>
+  
+  <Step title="Map Product Variants">
+    If both products have variants, map Dropi variations to your Shopify variants:
+    - Match by size, color, or other attributes
+    - Some variants can be left unassociated
+    - View SKU and pricing for each variant
+  </Step>
+  
+  <Step title="Configure Sync Options">
+    Choose which data to sync from Dropi:
+    
+    <Accordion title="Product Name">
+      Enable **Save Dropi Name** to overwrite your Shopify product title with the Dropi product name.
+    </Accordion>
+    
+    <Accordion title="Description">
+      Enable **Save Dropi Description** to sync the product description from Dropi to Shopify.
+    </Accordion>
+    
+    <Accordion title="Images">
+      Enable **Save Dropi Images** to import up to 5 product images from Dropi's gallery (hosted on CloudFront CDN).
+    </Accordion>
+    
+    <Accordion title="Barcodes">
+      Enable **Use Suggested Barcode** to apply Dropi's suggested barcodes to your Shopify variants.
+    </Accordion>
+  </Step>
+  
+  <Step title="Complete the Association">
+    Click **Sincronizar** to link the products. The app will:
+    - Create the product association in the database
+    - Update Shopify product data based on your settings
+    - Store variant mappings for order processing
+  </Step>
+</Steps>
+
+## Managing Synchronized Products
+
+### Viewing Associations
+
+Switch to the **Sincronizados** (Synchronized) tab to see all linked products:
+
+- View Dropi product name and ID
+- View associated Shopify product title and ID
+- See when the association was created
+- Check sync settings for each product
+
+### Removing Associations
+
+To unlink a product:
+
+1. Navigate to the **Sincronizados** tab
+2. Find the product association
+3. Click the **Eliminar** (Delete) button
+4. Confirm the deletion
+
+<Warning>
+  Removing an association does not delete products from either platform. It only removes the link between them.
+</Warning>
+
+## Product Association Database
+
+The app stores the following data for each association:
+
+| Field | Description |
+|-------|-------------|
+| `dropiProductId` | Dropi product identifier |
+| `shopifyProductId` | Shopify GraphQL product ID |
+| `dropiVariations` | JSON array of Dropi variant data |
+| `saveDropiName` | Whether to sync product name |
+| `saveDropiDescription` | Whether to sync description |
+| `saveDropiImages` | Whether to sync images |
+| `useSuggestedBarcode` | Whether to use Dropi barcodes |
+| `importType` | Always "link" (linking to existing products) |
+
+## Pagination
+
+The product list displays 10 products per page. Use the pagination controls to:
+
+- Navigate between pages with **Previous** and **Next** buttons
+- View the current page number and total pages
+- See the count of products displayed vs. total available
+
+## Best Practices
+
+<Card title="Product Matching" icon="link">
+  Match products with similar names and SKUs to avoid confusion during order processing.
+</Card>
+
+<Card title="Image Management" icon="image">
+  Review Dropi images before syncing to ensure they match your store's quality standards.
+</Card>
+
+<Card title="Variant Mapping" icon="grid">
+  Map all variants accurately to ensure correct inventory tracking when orders are placed.
+</Card>
+
+<Card title="Regular Syncs" icon="refresh-cw">
+  Periodically review your synchronized products to ensure data remains accurate.
+</Card>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="No products appear in search results">
+    - Verify your Dropi token is configured correctly in Settings
+    - Check that you have products marked as favorites or private in Dropi
+    - Try searching with a specific product ID or name
+  </Accordion>
+  
+  <Accordion title="Shopify products not loading in modal">
+    - Ensure you have products created in your Shopify store
+    - Check your app permissions include product read/write access
+    - Refresh the page and try again
+  </Accordion>
+  
+  <Accordion title="Images not syncing">
+    - Verify the Dropi product has images in its gallery
+    - Check that image URLs are accessible from CloudFront
+    - Ensure your Shopify plan supports the number of images being added
+  </Accordion>
+  
+  <Accordion title="Variants not mapping correctly">
+    - Ensure both products have variants configured
+    - Check that variant titles or SKUs match between platforms
+    - Try manually selecting each variant mapping
+  </Accordion>
+</AccordionGroup>
+
+## Related Features
+
+- [Order Processing](/features/order-processing) - How synchronized products enable automatic order handling
+- [Configuration](/configuration/store-settings) - Setting up your Dropi integration

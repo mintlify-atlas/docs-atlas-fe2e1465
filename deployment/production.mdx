@@ -1,0 +1,671 @@
+---
+title: "Production Deployment"
+description: "Deploy the Ecomdrop IA Connector to production with SSL, monitoring, and scaling"
+---
+
+## Overview
+
+This guide covers deploying the Ecomdrop IA Connector to production using Docker Swarm, Traefik reverse proxy, and Let's Encrypt SSL certificates.
+
+## Architecture
+
+The production setup includes:
+
+- **Traefik**: Reverse proxy with automatic SSL certificates
+- **Docker Swarm**: Container orchestration and high availability
+- **MySQL 8.0**: Production database
+- **Portainer**: Container management UI (optional)
+- **Let's Encrypt**: Free SSL certificates
+
+## Prerequisites
+
+<Steps>
+  <Step title="VPS Requirements">
+    - **OS**: Ubuntu 20.04+ or Debian 11+
+    - **RAM**: 2GB minimum (4GB recommended)
+    - **Storage**: 20GB minimum
+    - **CPU**: 2 cores minimum
+  </Step>
+
+  <Step title="Software Prerequisites">
+    - Docker 20.10+
+    - Docker Compose 2.0+
+    - Git
+  </Step>
+
+  <Step title="Domain Setup">
+    - Domain pointing to your VPS IP
+    - DNS A record: `connector.ecomdrop.io` → `your.vps.ip`
+  </Step>
+
+  <Step title="Firewall Configuration">
+    ```bash
+    # Allow HTTP (for Let's Encrypt validation)
+    ufw allow 80/tcp
+
+    # Allow HTTPS
+    ufw allow 443/tcp
+
+    # Allow SSH (if not already enabled)
+    ufw allow 22/tcp
+
+    # Enable firewall
+    ufw enable
+    ```
+  </Step>
+</Steps>
+
+## Initial Server Setup
+
+### 1. Install Docker
+
+```bash
+# Update system
+sudo apt update && sudo apt upgrade -y
+
+# Install dependencies
+sudo apt install -y apt-transport-https ca-certificates curl software-properties-common
+
+# Add Docker GPG key
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+
+# Add Docker repository
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+# Install Docker
+sudo apt update
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+# Add user to docker group
+sudo usermod -aG docker $USER
+```
+
+<Note>
+  Log out and back in for group changes to take effect.
+</Note>
+
+### 2. Initialize Docker Swarm
+
+```bash
+# Initialize Swarm mode
+docker swarm init
+
+# Create overlay network for services
+docker network create --driver overlay EcomdropNet
+```
+
+### 3. Set Up Traefik
+
+<Steps>
+  <Step title="Create Traefik configuration directory">
+    ```bash
+    mkdir -p /opt/traefik
+    cd /opt/traefik
+    ```
+  </Step>
+
+  <Step title="Create Traefik configuration file">
+    Create `traefik.yml`:
+
+    ```yaml
+    api:
+      dashboard: true
+
+    entryPoints:
+      web:
+        address: ":80"
+        http:
+          redirections:
+            entryPoint:
+              to: websecure
+              scheme: https
+      websecure:
+        address: ":443"
+
+    certificatesResolvers:
+      letsencryptresolver:
+        acme:
+          email: your-email@example.com
+          storage: /letsencrypt/acme.json
+          httpChallenge:
+            entryPoint: web
+
+    providers:
+      docker:
+        swarmMode: true
+        exposedByDefault: false
+        network: EcomdropNet
+    ```
+  </Step>
+
+  <Step title="Create Traefik docker-compose file">
+    Create `docker-compose.yml`:
+
+    ```yaml
+    version: "3.8"
+
+    services:
+      traefik:
+        image: traefik:v2.10
+        command:
+          - --configFile=/traefik.yml
+        ports:
+          - "80:80"
+          - "443:443"
+        networks:
+          - EcomdropNet
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock:ro
+          - ./traefik.yml:/traefik.yml:ro
+          - traefik-certificates:/letsencrypt
+        deploy:
+          placement:
+            constraints:
+              - node.role == manager
+          labels:
+            - traefik.enable=true
+            - traefik.http.routers.traefik.rule=Host(`traefik.ecomdrop.io`)
+            - traefik.http.routers.traefik.entrypoints=websecure
+            - traefik.http.routers.traefik.tls.certresolver=letsencryptresolver
+            - traefik.http.services.traefik.loadbalancer.server.port=8080
+
+    networks:
+      EcomdropNet:
+        external: true
+
+    volumes:
+      traefik-certificates:
+        driver: local
+    ```
+  </Step>
+
+  <Step title="Deploy Traefik">
+    ```bash
+    docker stack deploy -c docker-compose.yml traefik
+    ```
+  </Step>
+</Steps>
+
+## Application Deployment
+
+### 1. Clone Repository
+
+```bash
+cd /opt
+git clone <your-repository-url> ecomdrop-ia-connector
+cd ecomdrop-ia-connector
+```
+
+### 2. Configure Environment Variables
+
+<Steps>
+  <Step title="Create .env file">
+    ```bash
+    cp .env.example .env
+    nano .env
+    ```
+  </Step>
+
+  <Step title="Set required variables">
+    ```bash
+    # Database Configuration
+    MYSQL_ROOT_PASSWORD=your_secure_root_password
+    MYSQL_PASSWORD=your_secure_user_password
+
+    # Shopify API
+    SHOPIFY_API_KEY=your_shopify_api_key
+    SHOPIFY_API_SECRET=your_shopify_api_secret
+    SHOPIFY_APP_URL=https://connector.ecomdrop.io
+
+    # Optional: Theme Configuration
+    THEME_2_5_GIT_REPO=your-org/theme-repo
+    THEME_2_5_GIT_BRANCH=main
+    THEME_2_5_GIT_PROVIDER=github
+    THEME_2_5_GIT_TOKEN=your_github_token
+
+    # Optional: Custom Domain
+    SHOP_CUSTOM_DOMAIN=yourstore.com
+    ```
+
+    <Warning>
+      Use strong passwords! Generate secure passwords with: `openssl rand -base64 32`
+    </Warning>
+  </Step>
+</Steps>
+
+### 3. Build Docker Image
+
+Choose one of these methods:
+
+<CodeGroup>
+```bash Local Build
+# Build on the server
+docker build -t shopify-app_shopify_app:latest .
+```
+
+```bash From CI/CD
+# Pull pre-built image from registry
+docker pull your-registry/shopify-app:latest
+docker tag your-registry/shopify-app:latest shopify-app_shopify_app:latest
+```
+</CodeGroup>
+
+### 4. Deploy Application Stack
+
+```bash
+# Deploy the stack
+docker stack deploy -c docker-compose.yml shopify-app
+
+# Verify deployment
+docker service ls
+```
+
+You should see:
+- `shopify-app_mysql`
+- `shopify-app_shopify_app`
+
+### 5. Monitor Deployment
+
+<CodeGroup>
+```bash Service Status
+# Check service status
+docker service ps shopify-app_shopify_app
+docker service ps shopify-app_mysql
+```
+
+```bash Application Logs
+# Follow application logs
+docker service logs -f shopify-app_shopify_app
+```
+
+```bash MySQL Logs
+# Check database logs
+docker service logs -f shopify-app_mysql
+```
+</CodeGroup>
+
+<Tip>
+  Wait for MySQL to complete its health check before the application starts. This typically takes 30-60 seconds on first deployment.
+</Tip>
+
+## SSL/HTTPS Setup
+
+### Automatic SSL with Traefik
+
+Traefik automatically obtains and renews SSL certificates from Let's Encrypt. The configuration in `docker-compose.yml` includes:
+
+```yaml
+labels:
+  - traefik.enable=true
+  - traefik.http.routers.shopify_app.rule=Host(`connector.ecomdrop.io`)
+  - traefik.http.routers.shopify_app.entrypoints=websecure
+  - traefik.http.routers.shopify_app.tls.certresolver=letsencryptresolver
+```
+
+### Verify SSL Certificate
+
+```bash
+# Check certificate
+curl -vI https://connector.ecomdrop.io
+
+# Verify SSL score
+# Visit: https://www.ssllabs.com/ssltest/analyze.html?d=connector.ecomdrop.io
+```
+
+### Force HTTPS Redirect
+
+Traefik automatically redirects HTTP to HTTPS:
+
+```yaml
+labels:
+  - traefik.http.middlewares.shopify_app-headers.headers.sslredirect=true
+```
+
+## Configure Shopify Partners
+
+<Steps>
+  <Step title="Open Shopify Partners Dashboard">
+    Navigate to [partners.shopify.com](https://partners.shopify.com/)
+  </Step>
+
+  <Step title="Select your app">
+    Go to **Apps** and select your app.
+  </Step>
+
+  <Step title="Update App URL">
+    In **App setup**:
+    - **App URL**: `https://connector.ecomdrop.io`
+    - **Allowed redirection URL(s)**: `https://connector.ecomdrop.io/api/auth`
+  </Step>
+
+  <Step title="Save changes">
+    Click **Save** and test the installation.
+  </Step>
+</Steps>
+
+## Monitoring and Logging
+
+### Health Checks
+
+MySQL includes built-in health monitoring:
+
+```yaml
+healthcheck:
+  test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+  interval: 10s
+  timeout: 5s
+  retries: 10
+  start_period: 30s
+```
+
+### Log Aggregation
+
+```bash
+# View logs from all services
+docker service logs --tail 200 --follow shopify-app_shopify_app
+
+# Export logs to file
+docker service logs --since 24h shopify-app_shopify_app > app-logs-$(date +%Y%m%d).log
+```
+
+### Resource Monitoring
+
+<CodeGroup>
+```bash System Resources
+# Monitor resource usage
+docker stats
+```
+
+```bash Service Resources
+# Check service resource consumption
+docker service ps shopify-app_shopify_app --no-trunc
+```
+</CodeGroup>
+
+### Set Up Portainer (Optional)
+
+<Steps>
+  <Step title="Deploy Portainer">
+    ```bash
+    docker volume create portainer_data
+
+    docker service create \
+      --name portainer \
+      --publish 9000:9000 \
+      --publish 8000:8000 \
+      --constraint 'node.role == manager' \
+      --mount type=bind,src=/var/run/docker.sock,dst=/var/run/docker.sock \
+      --mount type=volume,src=portainer_data,dst=/data \
+      portainer/portainer-ce:latest
+    ```
+  </Step>
+
+  <Step title="Access Portainer">
+    Navigate to `http://your-vps-ip:9000` and create an admin account.
+  </Step>
+
+  <Step title="Secure with Traefik">
+    Add Traefik labels to expose Portainer via HTTPS (optional).
+  </Step>
+</Steps>
+
+## Database Backups
+
+### Manual Backup
+
+```bash
+# Create backup directory
+mkdir -p /opt/backups/mysql
+
+# Backup database
+docker exec $(docker ps -q -f name=shopify-app_mysql) \
+  mysqldump -u shopify_user -p${MYSQL_PASSWORD} shopify_app \
+  > /opt/backups/mysql/backup_$(date +%Y%m%d_%H%M%S).sql
+```
+
+### Automated Backups
+
+Create a backup script `/opt/scripts/backup-mysql.sh`:
+
+```bash
+#!/bin/bash
+BACKUP_DIR="/opt/backups/mysql"
+RETENTION_DAYS=7
+
+# Create backup
+DATETIME=$(date +%Y%m%d_%H%M%S)
+docker exec $(docker ps -q -f name=shopify-app_mysql) \
+  mysqldump -u shopify_user -p${MYSQL_PASSWORD} shopify_app \
+  > "${BACKUP_DIR}/backup_${DATETIME}.sql"
+
+# Compress backup
+gzip "${BACKUP_DIR}/backup_${DATETIME}.sql"
+
+# Delete old backups
+find "${BACKUP_DIR}" -name "backup_*.sql.gz" -mtime +${RETENTION_DAYS} -delete
+
+echo "Backup completed: backup_${DATETIME}.sql.gz"
+```
+
+Make it executable and add to cron:
+
+```bash
+chmod +x /opt/scripts/backup-mysql.sh
+
+# Add to crontab (daily at 2 AM)
+crontab -e
+# Add line:
+0 2 * * * /opt/scripts/backup-mysql.sh >> /var/log/mysql-backup.log 2>&1
+```
+
+### Restore from Backup
+
+```bash
+# Restore specific backup
+docker exec -i $(docker ps -q -f name=shopify-app_mysql) \
+  mysql -u shopify_user -p${MYSQL_PASSWORD} shopify_app \
+  < /opt/backups/mysql/backup_20250304_020000.sql
+```
+
+## Scaling
+
+### Horizontal Scaling
+
+```bash
+# Scale application to 3 instances
+docker service scale shopify-app_shopify_app=3
+
+# Verify scaling
+docker service ps shopify-app_shopify_app
+```
+
+<Warning>
+  Do not scale MySQL without proper replication setup. Consider using a managed database service for high-availability requirements.
+</Warning>
+
+### Vertical Scaling
+
+Update resource limits in `docker-compose.yml`:
+
+```yaml
+deploy:
+  resources:
+    limits:
+      cpus: '2'
+      memory: 2G
+    reservations:
+      cpus: '1'
+      memory: 1G
+```
+
+## Updates and Maintenance
+
+### Update Application
+
+<Steps>
+  <Step title="Pull latest code">
+    ```bash
+    cd /opt/ecomdrop-ia-connector
+    git pull origin main
+    ```
+  </Step>
+
+  <Step title="Rebuild image">
+    ```bash
+    docker build -t shopify-app_shopify_app:latest .
+    ```
+  </Step>
+
+  <Step title="Update service">
+    ```bash
+    docker service update \
+      --image shopify-app_shopify_app:latest \
+      shopify-app_shopify_app
+    ```
+  </Step>
+
+  <Step title="Monitor rollout">
+    ```bash
+    docker service logs -f shopify-app_shopify_app
+    ```
+  </Step>
+</Steps>
+
+### Zero-Downtime Updates
+
+```bash
+# Update with rolling update strategy
+docker service update \
+  --update-parallelism 1 \
+  --update-delay 10s \
+  --image shopify-app_shopify_app:latest \
+  shopify-app_shopify_app
+```
+
+## Security Best Practices
+
+<Steps>
+  <Step title="Use strong passwords">
+    ```bash
+    # Generate secure passwords
+    openssl rand -base64 32
+    ```
+  </Step>
+
+  <Step title="Enable Docker secrets">
+    ```bash
+    # Create secret
+    echo "my_secret_value" | docker secret create mysql_password -
+
+    # Use in docker-compose.yml
+    secrets:
+      - mysql_password
+    ```
+  </Step>
+
+  <Step title="Restrict network access">
+    ```bash
+    # Only allow Traefik and internal services
+    # Do not expose MySQL port externally
+    ```
+  </Step>
+
+  <Step title="Regular security updates">
+    ```bash
+    # Update system packages
+    sudo apt update && sudo apt upgrade -y
+
+    # Update Docker images
+    docker pull mysql:8.0
+    docker pull node:20-alpine
+    ```
+  </Step>
+
+  <Step title="Never commit secrets">
+    Add to `.gitignore`:
+    ```
+    .env
+    *.pem
+    *.key
+    credentials.json
+    ```
+  </Step>
+</Steps>
+
+## Hosting Options
+
+<CardGroup cols={2}>
+  <Card title="DigitalOcean" icon="cloud">
+    **Droplets**: $12/month (2GB RAM)
+    - Pre-configured Docker images
+    - Managed databases available
+    - Easy firewall configuration
+  </Card>
+
+  <Card title="AWS EC2" icon="aws">
+    **t3.small**: ~$15/month
+    - Highly scalable
+    - Use RDS for managed MySQL
+    - Advanced networking options
+  </Card>
+
+  <Card title="Linode" icon="server">
+    **Nanode**: $5/month (1GB RAM)
+    - Simple pricing
+    - Good performance
+    - Managed databases available
+  </Card>
+
+  <Card title="Vultr" icon="cloud">
+    **Cloud Compute**: $6/month (1GB RAM)
+    - Fast deployment
+    - Multiple data centers
+    - Easy scaling
+  </Card>
+</CardGroup>
+
+## Performance Optimization
+
+### MySQL Tuning
+
+```yaml
+command:
+  - mysqld
+  - --innodb_buffer_pool_size=1G  # 50-70% of available RAM
+  - --max_connections=200
+  - --query_cache_size=32M
+  - --tmp_table_size=64M
+  - --max_heap_table_size=64M
+```
+
+### Application Caching
+
+Consider adding Redis for session storage and caching:
+
+```yaml
+redis:
+  image: redis:7-alpine
+  networks:
+    - EcomdropNet
+  volumes:
+    - redis_data:/data
+```
+
+### CDN Integration
+
+Use Cloudflare for:
+- Static asset caching
+- DDoS protection
+- Global CDN
+- Additional SSL layer
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Troubleshooting" icon="wrench" href="/deployment/troubleshooting">
+    Common issues and solutions for production deployments
+  </Card>
+  <Card title="Docker Guide" icon="docker" href="/deployment/docker">
+    Deep dive into Docker configuration and best practices
+  </Card>
+</CardGroup>

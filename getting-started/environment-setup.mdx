@@ -1,0 +1,501 @@
+---
+title: 'Environment Setup'
+description: 'Configure environment variables and API credentials for the Ecomdrop IA Connector'
+---
+
+## Overview
+
+The Ecomdrop IA Connector uses environment variables to configure database connections, Shopify API credentials, and optional theme deployment settings. This guide provides detailed information about all available environment variables.
+
+<Warning>
+  Never commit your `.env` file to version control. It contains sensitive credentials that should remain private.
+</Warning>
+
+## Environment File
+
+### Creating the .env File
+
+Create a `.env` file in the root directory of the project:
+
+```bash
+touch .env
+```
+
+### Environment File Template
+
+Here's a complete template with all available configuration options:
+
+```bash
+# ============================================
+# 🗄️ DATABASE CONFIGURATION
+# ============================================
+DATABASE_URL="mysql://username:password@host:port/database"
+
+# ============================================
+# 🔐 SHOPIFY API CREDENTIALS
+# ============================================
+SHOPIFY_API_KEY=your_api_key_here
+SHOPIFY_API_SECRET=your_api_secret_here
+SHOPIFY_APP_URL=https://your-app-url.com
+
+# ============================================
+# 🌐 APPLICATION CONFIGURATION
+# ============================================
+NODE_ENV=development
+PORT=3000
+
+# ============================================
+# 🎨 THEME 2.5 CONFIGURATION (Optional)
+# ============================================
+THEME_2_5_GIT_REPO=Mercaline2024/Thema-ecomdro2.5
+THEME_2_5_GIT_BRANCH=main
+THEME_2_5_GIT_PROVIDER=github
+THEME_2_5_GIT_TOKEN=your_github_token
+
+# ============================================
+# 🏪 CUSTOM DOMAIN (Optional)
+# ============================================
+SHOP_CUSTOM_DOMAIN=
+```
+
+## Configuration Variables
+
+### Database Configuration
+
+<ParamField path="DATABASE_URL" type="string" required>
+  MySQL connection string for the application database.
+
+  **Format:**
+  ```
+  mysql://username:password@host:port/database
+  ```
+
+  **Example Values:**
+
+  <CodeGroup>
+  ```bash Local MySQL
+  DATABASE_URL="mysql://shopify_user:secure_password@localhost:3306/shopify_app"
+  ```
+
+  ```bash Remote MySQL
+  DATABASE_URL="mysql://admin:password123@192.168.1.100:3306/shopify_app"
+  ```
+
+  ```bash PlanetScale
+  DATABASE_URL="mysql://username:password@host.us-east-1.psdb.cloud/database?sslaccept=strict"
+  ```
+
+  ```bash Digital Ocean
+  DATABASE_URL="mysql://doadmin:password@db-mysql-nyc1-12345.ondigitalocean.com:25060/shopify_app?ssl-mode=REQUIRED"
+  ```
+  </CodeGroup>
+
+  <Note>
+    The database must be MySQL 8.0 with UTF-8MB4 character set support.
+  </Note>
+</ParamField>
+
+### Shopify API Configuration
+
+<ParamField path="SHOPIFY_API_KEY" type="string" required>
+  Your Shopify app's API key (also called Client ID).
+
+  **Where to find:**
+  1. Go to [Shopify Partners Dashboard](https://partners.shopify.com/)
+  2. Select your app
+  3. Navigate to **App setup** > **Client credentials**
+  4. Copy the **Client ID**
+
+  **Example:**
+  ```bash
+  SHOPIFY_API_KEY=f6edf6b48987a8adc8008aa6bb32b723
+  ```
+</ParamField>
+
+<ParamField path="SHOPIFY_API_SECRET" type="string" required>
+  Your Shopify app's API secret (also called Client secret).
+
+  **Where to find:**
+  1. Same location as API key
+  2. Copy the **Client secret**
+
+  <Warning>
+    Keep this secret secure. Never share it publicly or commit it to version control.
+  </Warning>
+
+  **Example:**
+  ```bash
+  SHOPIFY_API_SECRET=shpss_1234567890abcdef1234567890abcdef
+  ```
+</ParamField>
+
+<ParamField path="SHOPIFY_APP_URL" type="string" required>
+  The public URL where your app is accessible.
+
+  **Development:** Automatically set by Shopify CLI (tunnel URL)
+  ```bash
+  SHOPIFY_APP_URL=https://amazing-cat-123.ngrok.io
+  ```
+
+  **Production:** Your actual domain
+  ```bash
+  SHOPIFY_APP_URL=https://connector.ecomdrop.io
+  ```
+
+  <Note>
+    This URL must match the **App URL** configured in your Shopify Partners Dashboard.
+  </Note>
+</ParamField>
+
+### Application Configuration
+
+<ParamField path="NODE_ENV" type="string" default="development">
+  The Node.js environment mode.
+
+  **Accepted values:**
+  - `development` - Development mode with hot reload and verbose logging
+  - `production` - Production mode with optimizations and minimal logging
+  - `test` - Test mode for running automated tests
+
+  **Example:**
+  ```bash
+  # Development
+  NODE_ENV=development
+
+  # Production
+  NODE_ENV=production
+  ```
+</ParamField>
+
+<ParamField path="PORT" type="number" default="3000">
+  The port number the application server will listen on.
+
+  **Example:**
+  ```bash
+  PORT=3000
+  ```
+
+  <Tip>
+    Change this if port 3000 is already in use on your system.
+  </Tip>
+</ParamField>
+
+### Theme Configuration (Optional)
+
+These variables configure automatic Shopify theme installation from Git repositories.
+
+<ParamField path="THEME_2_5_GIT_REPO" type="string">
+  The Git repository containing your Shopify theme.
+
+  **Format:** `username/repository` or `organization/repository`
+
+  **Example:**
+  ```bash
+  THEME_2_5_GIT_REPO=Mercaline2024/Thema-ecomdro2.5
+  ```
+</ParamField>
+
+<ParamField path="THEME_2_5_GIT_BRANCH" type="string" default="main">
+  The Git branch to use for theme deployment.
+
+  **Example:**
+  ```bash
+  THEME_2_5_GIT_BRANCH=main
+  ```
+</ParamField>
+
+<ParamField path="THEME_2_5_GIT_PROVIDER" type="string">
+  The Git hosting provider.
+
+  **Accepted values:**
+  - `github` - GitHub
+  - `gitlab` - GitLab
+  - `bitbucket` - Bitbucket
+
+  **Example:**
+  ```bash
+  THEME_2_5_GIT_PROVIDER=github
+  ```
+</ParamField>
+
+<ParamField path="THEME_2_5_GIT_TOKEN" type="string">
+  Personal access token for private Git repositories.
+
+  **When needed:** Only required if your theme repository is private
+
+  **GitHub Token Creation:**
+  1. Go to GitHub Settings > Developer settings > Personal access tokens
+  2. Generate new token (classic)
+  3. Select scope: `repo` (Full control of private repositories)
+  4. Copy the token
+
+  **Example:**
+  ```bash
+  THEME_2_5_GIT_TOKEN=ghp_1234567890abcdefghijklmnopqrstuvwxyz
+  ```
+
+  <Warning>
+    This token grants access to your repositories. Keep it secure.
+  </Warning>
+</ParamField>
+
+### Custom Domain (Optional)
+
+<ParamField path="SHOP_CUSTOM_DOMAIN" type="string">
+  Custom domain for Shopify store, if different from the `.myshopify.com` domain.
+
+  **Example:**
+  ```bash
+  SHOP_CUSTOM_DOMAIN=shop.example.com
+  ```
+
+  <Note>
+    Most apps don't need this. Only use if your store uses a custom primary domain.
+  </Note>
+</ParamField>
+
+## Environment-Specific Configurations
+
+### Development Environment
+
+For local development:
+
+```bash .env.development
+# Database - Local MySQL
+DATABASE_URL="mysql://shopify_user:password@localhost:3306/shopify_app"
+
+# Shopify - Development app credentials
+SHOPIFY_API_KEY=dev_api_key
+SHOPIFY_API_SECRET=dev_api_secret
+SHOPIFY_APP_URL=https://tunnel-url.ngrok.io
+
+# Application
+NODE_ENV=development
+PORT=3000
+
+# Theme - Optional for testing
+THEME_2_5_GIT_REPO=
+THEME_2_5_GIT_BRANCH=develop
+THEME_2_5_GIT_PROVIDER=github
+THEME_2_5_GIT_TOKEN=
+```
+
+<Tip>
+  Use a separate development database to avoid affecting production data.
+</Tip>
+
+### Production Environment
+
+For production deployment:
+
+```bash .env.production
+# Database - Production MySQL (Digital Ocean, PlanetScale, etc.)
+DATABASE_URL="mysql://prod_user:secure_password@prod-db.example.com:3306/shopify_app?ssl-mode=REQUIRED"
+
+# Shopify - Production app credentials
+SHOPIFY_API_KEY=prod_api_key
+SHOPIFY_API_SECRET=prod_api_secret
+SHOPIFY_APP_URL=https://connector.ecomdrop.io
+
+# Application
+NODE_ENV=production
+PORT=3000
+
+# Theme - Production theme repository
+THEME_2_5_GIT_REPO=Mercaline2024/Thema-ecomdro2.5
+THEME_2_5_GIT_BRANCH=main
+THEME_2_5_GIT_PROVIDER=github
+THEME_2_5_GIT_TOKEN=ghp_production_token
+```
+
+<Warning>
+  Always use strong passwords and enable SSL for production database connections.
+</Warning>
+
+### Docker Environment
+
+For Docker deployment, environment variables are configured in `docker-compose.yml`:
+
+```yaml docker-compose.yml
+services:
+  shopify_app:
+    environment:
+      DATABASE_URL: mysql://shopify_user:${MYSQL_PASSWORD}@mysql:3306/shopify_app
+      SHOPIFY_API_KEY: ${SHOPIFY_API_KEY}
+      SHOPIFY_API_SECRET: ${SHOPIFY_API_SECRET}
+      SHOPIFY_APP_URL: https://connector.ecomdrop.io
+      NODE_ENV: production
+      PORT: 3000
+      THEME_2_5_GIT_REPO: ${THEME_2_5_GIT_REPO}
+      THEME_2_5_GIT_BRANCH: ${THEME_2_5_GIT_BRANCH}
+      THEME_2_5_GIT_PROVIDER: ${THEME_2_5_GIT_PROVIDER}
+      THEME_2_5_GIT_TOKEN: ${THEME_2_5_GIT_TOKEN}
+```
+
+## Validating Configuration
+
+### Check Environment Variables
+
+Verify your environment variables are loaded correctly:
+
+```bash
+# Print all environment variables (development only!)
+node -e "console.log(process.env)"
+
+# Check specific variable
+node -e "console.log(process.env.DATABASE_URL)"
+```
+
+<Warning>
+  Never print environment variables in production logs as they contain sensitive credentials.
+</Warning>
+
+### Test Database Connection
+
+Test your database connection:
+
+```bash
+# Using Prisma
+npx prisma db pull
+
+# Should output: "Introspected X tables"
+```
+
+### Validate Shopify Credentials
+
+Start the dev server to validate Shopify credentials:
+
+```bash
+npm run dev
+
+# Shopify CLI will validate your API credentials
+# and warn you if something is misconfigured
+```
+
+## Security Best Practices
+
+<Steps>
+  <Step title="Never Commit .env Files">
+    Add `.env` to your `.gitignore`:
+
+    ```bash .gitignore
+    # Environment variables
+    .env
+    .env.local
+    .env.*.local
+    ```
+  </Step>
+
+  <Step title="Use Strong Passwords">
+    Generate strong passwords for database users:
+
+    ```bash
+    # Generate a random password (macOS/Linux)
+    openssl rand -base64 32
+    ```
+  </Step>
+
+  <Step title="Rotate Credentials Regularly">
+    Change your database passwords and API tokens periodically:
+
+    - Database passwords: Every 90 days
+    - API tokens: Every 180 days
+    - After team member departure: Immediately
+  </Step>
+
+  <Step title="Use Environment-Specific Credentials">
+    Never use production credentials in development:
+
+    - Separate database instances
+    - Separate Shopify apps for dev/staging/prod
+    - Different API keys per environment
+  </Step>
+
+  <Step title="Restrict Database Access">
+    Configure MySQL user permissions:
+
+    ```sql
+    -- Grant only necessary permissions
+    GRANT SELECT, INSERT, UPDATE, DELETE ON shopify_app.* TO 'shopify_user'@'localhost';
+    
+    -- Don't grant DROP, CREATE, or admin privileges
+    FLUSH PRIVILEGES;
+    ```
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+### Environment Variables Not Loading
+
+If your `.env` file isn't being loaded:
+
+1. **Check file location:** Must be in project root directory
+2. **Check file name:** Must be exactly `.env` (note the leading dot)
+3. **Restart dev server:** Changes require server restart
+
+```bash
+# Verify .env file exists
+ls -la | grep .env
+
+# Should output: .env
+```
+
+### Invalid DATABASE_URL Format
+
+Common DATABASE_URL mistakes:
+
+```bash
+# ❌ Wrong - missing protocol
+DATABASE_URL="localhost:3306/shopify_app"
+
+# ❌ Wrong - incorrect protocol
+DATABASE_URL="postgres://user:pass@localhost:3306/shopify_app"
+
+# ❌ Wrong - unencoded special characters in password
+DATABASE_URL="mysql://user:p@ssw0rd@localhost:3306/shopify_app"
+
+# ✅ Correct
+DATABASE_URL="mysql://user:p%40ssw0rd@localhost:3306/shopify_app"
+```
+
+<Tip>
+  Use URL encoding for special characters in passwords: `@` becomes `%40`, `#` becomes `%23`, etc.
+</Tip>
+
+### Shopify App URL Mismatch
+
+If you get "redirect_uri mismatch" errors:
+
+1. **Check Partners Dashboard:**
+   - App URL: `https://your-app-url.com`
+   - Allowed redirect URLs: `https://your-app-url.com/api/auth`
+
+2. **Verify .env matches:**
+   ```bash
+   SHOPIFY_APP_URL=https://your-app-url.com
+   ```
+
+3. **For development:** Shopify CLI updates this automatically
+
+## Next Steps
+
+After configuring your environment:
+
+<CardGroup cols={2}>
+  <Card title="Database Setup" icon="database" href="/getting-started/database-setup">
+    Set up MySQL and run Prisma migrations
+  </Card>
+  
+  <Card title="Quickstart Guide" icon="rocket" href="/getting-started/quickstart">
+    Complete the quick setup and run your app
+  </Card>
+  
+  <Card title="Deployment Guide" icon="server" href="/deployment/production">
+    Deploy to production with Docker and Traefik
+  </Card>
+  
+  <Card title="Configuration" icon="gear" href="/configuration/store-settings">
+    Configure Ecomdrop and Dropi integrations
+  </Card>
+</CardGroup>

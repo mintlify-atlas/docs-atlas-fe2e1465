@@ -1,0 +1,238 @@
+---
+title: "Orders API"
+description: "API endpoints for order management and polling"
+---
+
+The Orders API provides endpoints for retrieving and managing Shopify orders.
+
+## Poll Recent Orders
+
+Retrieves the most recent orders from Shopify with detailed information including line items, customer data, and shipping addresses.
+
+<CodeGroup>
+```http GET
+GET /api/orders/poll
+```
+
+```http POST
+POST /api/orders/poll
+```
+</CodeGroup>
+
+<Note>
+  Both GET and POST methods are supported for this endpoint.
+</Note>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  Whether the request was successful
+</ResponseField>
+
+<ResponseField name="orders" type="array">
+  Array of recent orders (up to 10)
+  
+  <Expandable title="Order Object">
+    <ResponseField name="id" type="string">
+      Shopify order ID (GraphQL format)
+    </ResponseField>
+    
+    <ResponseField name="name" type="string">
+      Order name (e.g., "#1001")
+    </ResponseField>
+    
+    <ResponseField name="createdAt" type="string">
+      Order creation timestamp (ISO 8601)
+    </ResponseField>
+    
+    <ResponseField name="financialStatus" type="string">
+      Financial status (PENDING, AUTHORIZED, PAID, etc.)
+    </ResponseField>
+    
+    <ResponseField name="fulfillmentStatus" type="string">
+      Fulfillment status (UNFULFILLED, PARTIAL, FULFILLED, etc.)
+    </ResponseField>
+    
+    <ResponseField name="totalPrice" type="string">
+      Total order amount
+    </ResponseField>
+    
+    <ResponseField name="currency" type="string">
+      Currency code (e.g., "USD", "EUR")
+    </ResponseField>
+    
+    <ResponseField name="lineItems" type="array">
+      Order line items
+      
+      <Expandable title="Line Item">
+        <ResponseField name="id" type="string">
+          Line item ID
+        </ResponseField>
+        
+        <ResponseField name="name" type="string">
+          Product name
+        </ResponseField>
+        
+        <ResponseField name="quantity" type="integer">
+          Quantity ordered
+        </ResponseField>
+        
+        <ResponseField name="variant" type="string">
+          Variant title
+        </ResponseField>
+        
+        <ResponseField name="sku" type="string">
+          SKU code
+        </ResponseField>
+        
+        <ResponseField name="productId" type="string">
+          Product ID
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    
+    <ResponseField name="shippingAddress" type="object">
+      Shipping address details
+      
+      <Expandable title="Address Fields">
+        <ResponseField name="firstName" type="string">
+          First name
+        </ResponseField>
+        
+        <ResponseField name="lastName" type="string">
+          Last name
+        </ResponseField>
+        
+        <ResponseField name="address1" type="string">
+          Address line 1
+        </ResponseField>
+        
+        <ResponseField name="city" type="string">
+          City
+        </ResponseField>
+        
+        <ResponseField name="province" type="string">
+          State/Province
+        </ResponseField>
+        
+        <ResponseField name="country" type="string">
+          Country
+        </ResponseField>
+        
+        <ResponseField name="zip" type="string">
+          Postal code
+        </ResponseField>
+        
+        <ResponseField name="phone" type="string">
+          Phone number
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    
+    <ResponseField name="customer" type="object">
+      Customer information
+      
+      <Expandable title="Customer Fields">
+        <ResponseField name="id" type="string">
+          Customer ID
+        </ResponseField>
+        
+        <ResponseField name="email" type="string">
+          Email address
+        </ResponseField>
+        
+        <ResponseField name="firstName" type="string">
+          First name
+        </ResponseField>
+        
+        <ResponseField name="lastName" type="string">
+          Last name
+        </ResponseField>
+        
+        <ResponseField name="phone" type="string">
+          Phone number
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    
+    <ResponseField name="tags" type="array">
+      Order tags
+    </ResponseField>
+    
+    <ResponseField name="note" type="string">
+      Order note
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="count" type="integer">
+  Number of orders returned
+</ResponseField>
+
+### Example Response
+
+<CodeGroup>
+```json 200 OK
+{
+  "success": true,
+  "orders": [
+    {
+      "id": "gid://shopify/Order/5678901234567890",
+      "name": "#1001",
+      "createdAt": "2026-03-04T10:30:00Z",
+      "financialStatus": "PAID",
+      "fulfillmentStatus": "UNFULFILLED",
+      "totalPrice": "149.99",
+      "currency": "USD",
+      "lineItems": [
+        {
+          "id": "gid://shopify/LineItem/123",
+          "name": "Premium Product",
+          "quantity": 2,
+          "variant": "Small / Red",
+          "sku": "PROD-SM-RED",
+          "productId": "gid://shopify/Product/7891234567890"
+        }
+      ],
+      "shippingAddress": {
+        "firstName": "John",
+        "lastName": "Doe",
+        "address1": "123 Main St",
+        "city": "New York",
+        "province": "NY",
+        "country": "United States",
+        "zip": "10001",
+        "phone": "+1234567890"
+      },
+      "customer": {
+        "id": "gid://shopify/Customer/987654321",
+        "email": "john.doe@example.com",
+        "firstName": "John",
+        "lastName": "Doe",
+        "phone": "+1234567890"
+      },
+      "tags": ["ecomdrop-pending"],
+      "note": "Please ship ASAP"
+    }
+  ],
+  "count": 1
+}
+```
+
+```json 500 Internal Server Error
+{
+  "success": false,
+  "error": "Error message",
+  "orders": [],
+  "count": 0
+}
+```
+</CodeGroup>
+
+<Note>
+  This endpoint returns the 10 most recent orders sorted by creation date (newest first).
+</Note>
+
+<Warning>
+  Requires appropriate Shopify API permissions to access order data.
+</Warning>

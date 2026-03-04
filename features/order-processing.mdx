@@ -1,0 +1,397 @@
+---
+title: 'Order Processing'
+description: 'Automated order handling with Ecomdrop flow triggers and webhook-based fulfillment'
+---
+
+## Overview
+
+The Order Processing feature automatically handles orders and abandoned carts through Ecomdrop flow automation. When orders are created in Shopify, the app triggers configured Ecomdrop flows and updates order tags based on processing status.
+
+## How It Works
+
+<Steps>
+  <Step title="Order Creation">
+    When a customer completes a purchase in your Shopify store, Shopify fires an `ORDERS_CREATE` webhook.
+  </Step>
+  
+  <Step title="Webhook Reception">
+    The Ecomdrop IA Connector receives the webhook and extracts order data including:
+    - Order ID, name, and number
+    - Line items with products and variants
+    - Customer information
+    - Shipping and billing addresses
+    - Financial and fulfillment status
+  </Step>
+  
+  <Step title="Flow Trigger">
+    The app triggers your configured Ecomdrop "Nuevo Pedido" (New Order) flow with the complete order data.
+  </Step>
+  
+  <Step title="Async Processing">
+    Ecomdrop processes the order asynchronously. When complete, it calls back to the app to update order status.
+  </Step>
+  
+  <Step title="Tag Assignment">
+    Based on the callback result, the app automatically adds tags to the order in Shopify (e.g., `ecomdrop-processed`, `ecomdrop-error`).
+  </Step>
+</Steps>
+
+## Order Webhooks
+
+### New Order Webhook
+
+The `ORDERS_CREATE` webhook triggers when:
+
+- A customer completes checkout
+- Payment is confirmed
+- The order is created in Shopify
+
+**Data sent to Ecomdrop:**
+
+<Tabs>
+  <Tab title="Order Details">
+    ```json
+    {
+      "orderId": "gid://shopify/Order/123",
+      "orderName": "#1001",
+      "orderNumber": 1001,
+      "createdAt": "2026-03-04T12:00:00Z",
+      "totalPrice": "150000.00",
+      "currency": "COP",
+      "financialStatus": "PAID",
+      "fulfillmentStatus": "UNFULFILLED"
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Line Items">
+    ```json
+    {
+      "lineItems": [
+        {
+          "id": "gid://shopify/LineItem/456",
+          "name": "Product Name",
+          "quantity": 2,
+          "price": "75000.00",
+          "sku": "PROD-123",
+          "variantId": "gid://shopify/ProductVariant/789",
+          "productId": "gid://shopify/Product/101"
+        }
+      ]
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Customer Info">
+    ```json
+    {
+      "customer": {
+        "id": "gid://shopify/Customer/999",
+        "email": "customer@example.com",
+        "firstName": "Juan",
+        "lastName": "Pérez",
+        "phone": "+57300123456"
+      }
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Shipping Address">
+    ```json
+    {
+      "shippingAddress": {
+        "firstName": "Juan",
+        "lastName": "Pérez",
+        "address1": "Calle 123 #45-67",
+        "city": "Bogotá",
+        "province": "Cundinamarca",
+        "country": "Colombia",
+        "zip": "110111",
+        "phone": "+57300123456"
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Abandoned Cart Handling
+
+### Draft Order Webhook
+
+The `DRAFT_ORDERS_CREATE` webhook triggers when:
+
+- A customer abandons their cart
+- A draft order is manually created
+- Checkout is initiated but not completed
+
+<Note>
+  Configure the "Carrito Abandonado" (Abandoned Cart) Flow ID in your settings to enable this feature.
+</Note>
+
+**Draft order data includes:**
+
+- Draft order ID and name
+- Line items from the abandoned cart
+- Customer email and contact information
+- Partial address information (if provided)
+- Total cart value
+
+## Ecomdrop Flow Integration
+
+### Triggering Flows
+
+The app uses the Ecomdrop API to trigger automation flows:
+
+```javascript
+// Automatically called by the app
+triggerEcomdropFlow(
+  apiKey,        // Your Ecomdrop API key
+  flowId,        // Flow ID from configuration
+  orderData      // Complete order/cart data
+)
+```
+
+### Callback Mechanism
+
+Ecomdrop can notify the app when processing completes:
+
+<Steps>
+  <Step title="Configure Callback URL">
+    The app automatically provides a callback URL to Ecomdrop:
+    ```
+    https://your-app.fly.dev/api/ecomdrop/callback
+    ```
+  </Step>
+  
+  <Step title="Ecomdrop Calls Back">
+    When flow processing completes, Ecomdrop POSTs to the callback URL with:
+    ```json
+    {
+      "orderName": "#1001",
+      "apiKey": "your-ecomdrop-api-key",
+      "status": "success",
+      "tag": "ecomdrop-processed"
+    }
+    ```
+  </Step>
+  
+  <Step title="App Updates Order">
+    The app searches for the order by name and adds the specified tags.
+  </Step>
+</Steps>
+
+## Order Tag Management
+
+### Automatic Tags
+
+The app assigns tags based on processing status:
+
+| Tag | When Applied | Meaning |
+|-----|--------------|----------|
+| `ecomdrop-processed` | Callback with status "success" or "completed" | Order successfully processed by Ecomdrop |
+| `ecomdrop-pending` | Callback with status "pending" | Processing in progress |
+| `ecomdrop-error` | Callback with status "error" or "failed", or immediate failure | Processing failed |
+| `ecomdrop-completed` | Callback with status "completed" | Fulfillment completed |
+
+### Custom Tags
+
+Ecomdrop can send custom tags in the callback:
+
+```json
+{
+  "orderName": "#1001",
+  "tags": ["dropi-fulfilled", "shipped-today"],
+  "apiKey": "your-api-key"
+}
+```
+
+All tags are added to the order cumulatively (existing tags are preserved).
+
+## Order Data Structure
+
+### GraphQL vs REST Compatibility
+
+The app handles both GraphQL and REST webhook formats:
+
+<Accordion title="GraphQL Format (Default)">
+  Modern Shopify webhooks use GraphQL format:
+  ```json
+  {
+    "order": {
+      "id": "gid://shopify/Order/123",
+      "name": "#1001",
+      "totalPriceSet": {
+        "shopMoney": {
+          "amount": "150000.00",
+          "currencyCode": "COP"
+        }
+      },
+      "lineItems": {
+        "edges": [
+          {
+            "node": {
+              "id": "gid://shopify/LineItem/456",
+              "quantity": 2
+            }
+          }
+        ]
+      }
+    }
+  }
+  ```
+</Accordion>
+
+<Accordion title="REST Format (Legacy)">
+  The app also supports legacy REST webhooks:
+  ```json
+  {
+    "order": {
+      "id": 123,
+      "name": "#1001",
+      "total_price": "150000.00",
+      "currency": "COP",
+      "line_items": [
+        {
+          "id": 456,
+          "quantity": 2
+        }
+      ]
+    }
+  }
+  ```
+</Accordion>
+
+## Configuration Requirements
+
+<Warning>
+  Order processing only works when both requirements are met:
+  1. Ecomdrop API Key is configured
+  2. Flow IDs are configured (Nuevo Pedido and/or Carrito Abandonado)
+</Warning>
+
+To configure:
+
+1. Navigate to **Configuration** in the app
+2. Add your **Ecomdrop API Key**
+3. Set the **Nuevo Pedido Flow ID** for order processing
+4. Set the **Carrito Abandonado Flow ID** for abandoned cart recovery
+5. Click **Save**
+
+## Callback Authentication
+
+The callback endpoint uses API key authentication:
+
+<Steps>
+  <Step title="API Key Validation">
+    Ecomdrop must include the API key in the callback payload:
+    ```json
+    {
+      "apiKey": "your-ecomdrop-api-key"
+    }
+    ```
+  </Step>
+  
+  <Step title="Shop Lookup">
+    The app looks up the shop by API key to ensure the callback is authorized.
+  </Step>
+  
+  <Step title="Order Search">
+    The app searches for the order by name using GraphQL:
+    ```graphql
+    query GetOrderByName($name: String!) {
+      orders(first: 1, query: $name) {
+        edges {
+          node {
+            id
+            name
+          }
+        }
+      }
+    }
+    ```
+  </Step>
+  
+  <Step title="Tag Update">
+    Tags are applied using the Shopify GraphQL Admin API.
+  </Step>
+</Steps>
+
+## Monitoring and Debugging
+
+### Server Logs
+
+The app logs detailed information for debugging:
+
+```
+📦 Received ORDERS_CREATE webhook for shop.myshopify.com
+🔍 Looking for configuration with shop: shop.myshopify.com
+📋 Processing order #1001 for shop.myshopify.com
+🚀 Triggering Ecomdrop flow abc123 for order #1001
+✅ Successfully triggered flow for order #1001
+⏳ Waiting for Ecomdrop callback to assign tags...
+```
+
+### Callback Logs
+
+```
+📥 Received Ecomdrop callback: {"orderName":"#1001","status":"success"}
+🔍 Processing callback for shop: shop.myshopify.com
+🔍 Searching for order by name: #1001 using GraphQL API
+✅ Found order by name: #1001 → gid://shopify/Order/123
+🔄 Updating order gid://shopify/Order/123 with tags: ecomdrop-processed
+✅ Successfully updated order #1001 with tags
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Webhooks not triggering flows">
+    - Verify Ecomdrop API Key is configured in Settings
+    - Check that Flow IDs are correct
+    - Review server logs for webhook reception
+    - Ensure the app is installed and active
+  </Accordion>
+  
+  <Accordion title="Tags not being added to orders">
+    - Verify callback URL is accessible from Ecomdrop
+    - Check that Ecomdrop is sending callbacks with correct format
+    - Ensure API key in callback matches your configuration
+    - Review callback logs for errors
+  </Accordion>
+  
+  <Accordion title="Order not found by name">
+    - Ensure order name format matches (e.g., "#1001")
+    - Check that the order exists in Shopify
+    - Verify app has read access to orders
+    - For new apps, ensure protected data access is approved
+  </Accordion>
+  
+  <Accordion title="Callback authentication fails">
+    - Verify the API key in the callback payload is correct
+    - Ensure the API key matches what's stored in the app
+    - Check that the shop domain is correct
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<Card title="Test Webhooks" icon="flask">
+  Use Shopify's webhook testing tools to verify your configuration before processing real orders.
+</Card>
+
+<Card title="Monitor Tags" icon="tag">
+  Regularly review order tags to ensure flows are processing correctly.
+</Card>
+
+<Card title="Handle Errors" icon="alert-triangle">
+  Set up alerts for orders with `ecomdrop-error` tags to quickly resolve issues.
+</Card>
+
+<Card title="Async Processing" icon="clock">
+  Remember that flow processing is asynchronous - tags appear after Ecomdrop completes processing.
+</Card>
+
+## Related Features
+
+- [Product Management](/features/product-management) - Link products to enable order processing
+- [Configuration](/configuration/store-settings) - Configure Ecomdrop API and Flow IDs
